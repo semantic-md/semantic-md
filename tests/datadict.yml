@@ -1,0 +1,8 @@
+# Proposed SemanticMD-based data dictionary format
+#
+# Describes dataset metadata, resource metadata, tables and columns
+# See https://semanticmd.org for more information
+
+semantic-md-version: 0
+
+
