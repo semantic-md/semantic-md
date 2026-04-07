@@ -5,4 +5,110 @@
 
 semantic-md-version: 0
 
+sections:
+- start_match: |
+    # Dataset {id}
+  vars: [id]
+  patch_add:
+    /datasets/%id: {}
 
+  children:
+  - match: |
+      > {desc}
+    vars: [desc]
+    patch_add:
+      description: %desc
+  - table_match: [Resource, Table, Title]
+    row_patch_add:
+      resources/-: {"name": %0, "table": %1, "title": %2}
+
+- start_match: |
+    # Table {id}
+  vars: [id]
+  patch_add:
+    /tables/%id: {}
+
+  children:
+  - table_match: [Column, Type, Label]
+    row_patch_add:
+      columns/%0: {"label": %2}
+    row_submatch:
+      against: %1
+      rules:
+      - filter:
+          match: |
+            required {}
+          patch_add:
+            required: true
+      - match: integer
+        patch_add:
+          type: integer
+      - match: timestamp
+        patch_add:
+          type: timestamp
+      - match: text
+        patch_add:
+          type: text
+
+  - table_match: [Primary key]
+    row_patch_add:
+      primary_key/-: %0
+
+  - sections:
+    - start_match: |
+        ## Column {id}
+      vars: [id]
+      patch_path: /columns/%id
+
+      children:
+      - match: |
+          > {desc}
+        vars: [desc]
+        patch_add:
+          description: %desc
+      - match: |
+          ### Validation
+
+          Value >= {min}
+        vars: [min]
+        patch_add:
+          validation: {"gte": %min}
+      - match: |
+          ### Choices
+
+          - {listval}
+        vars: [listval]
+        list_patch_add:
+          choices/-: %listval
+
+- start_match: |
+    # Resource {id}
+  vars: [id]
+  patch_add:
+    /resources/%id: {}
+
+  children:
+  - match: |
+      > {desc}
+    vars: [desc]
+    patch_add:
+      description: %desc
+
+  sections:
+  - start_match: |
+      ## Statistics
+    children:
+    - table_match: [Column, Min, Max, Cardinality, Null Count]
+      row_patch_add:
+        columns/%0/statistics: {
+          "min": %1, "max": %2, "cardinality": %3, "null_count": %4,
+        }
+    - match: |
+        ### Frequency for {col}
+      vars: [col]
+      patch_path: columns/%col
+
+      children:
+      - table_match: [Choice, Frequency]
+        row_patch_add:
+          frequency/%0: %1
