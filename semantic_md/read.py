@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from mistletoe import Document
+from mistletoe.block_token import BlockToken
 from yaml import safe_load
 
 MISTUNE_PLUGINS = ['table', 'def_list']
@@ -30,25 +31,25 @@ class MatchBase:
 
 @dataclass
 class Match(MatchBase):
-    md: str
+    doc: list[BlockToken]
     patch_add: dict[str: Any]
     vars_: list[str]
 
 @dataclass
 class TableMatch(MatchBase):
-    md: str
+    doc: list[BlockToken]
     row_patch_add: dict[str: Any]
     row_submatch: dict[str: Any] | None = None
 
 @dataclass
 class ListMatch(MatchBase):
     "vars_ = ['listval']"
-    md: str
+    doc: list[BlockToken]
     list_patch_add: dict[str: Any]
 
 @dataclass
 class StartMatch(MatchBase):
-    md: str
+    doc: list[BlockToken]
     patch_path: str | None
     patch_add: dict[str: Any] | None
     vars_: list[str] | None
@@ -60,18 +61,26 @@ class UnknownMatch(Exception):
 
 def parse_match(m):
     if md := m.get('start_match'):
-        match = StartMatch(md, m.get('patch_path'), m.get('patch_add'), m.get('vars'))
+        doc = Document(md).children
+        match = StartMatch(doc, m.get('patch_path'), m.get('patch_add'), m.get('vars'))
         if children := m.get('children'):
             match.children = parse_matches(children)
         if sections := m.get('sections'):
             match.sections = parse_matches(sections)
         return match
+
     if md := m.get('match'):
-        return Match(md, m.get('patch_add'), m.get('vars'))
+        doc = Document(md).children
+        return Match(doc, m.get('patch_add'), m.get('vars'))
+
     if md := m.get('table_match'):
-        return TableMatch(md, m['row_patch_add'], m.get('row_submatch'))
+        doc = Document(md).children
+        return TableMatch(doc, m['row_patch_add'], m.get('row_submatch'))
+
     if md := m.get('list_match'):
-        return ListMatch(md, m['list_patch_add'])
+        doc = Document(md).children
+        return ListMatch(doc, m['list_patch_add'])
+
     raise UnknownMatch(m)
 
 
