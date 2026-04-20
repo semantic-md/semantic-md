@@ -14,4 +14,7 @@ def test1():
     schema = safe_load(open(os.path.join(HERE, 'datadict.yml')))
 
     parsed = read.md_parse_body(body, schema)
+
+    s = open(os.path.join(HERE, 'datadict.yml')).read()
+    schema = read.Schema.read(s)
     breakpoint()

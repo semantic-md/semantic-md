@@ -54,32 +54,32 @@ sections:
     row_patch_add:
       primary_key/-: $0
 
-  - sections:
-    - start_match: |
-        ## Column {id}
-      vars: [id]
-      patch_path: /columns/$id
+  sections:
+  - start_match: |
+      ## Column {id}
+    vars: [id]
+    patch_path: /columns/$id
 
-      children:
-      - match: |
-          > {desc}
-        vars: [desc]
-        patch_add:
-          description: $desc
-      - match: |
-          ### Validation
+    children:
+    - match: |
+        > {desc}
+      vars: [desc]
+      patch_add:
+        description: $desc
+    - match: |
+        ### Validation
 
-          Value >= {min}
-        vars: [min]
-        patch_add:
-          validation: {"gte": $min}
-      - match: |
-          ### Choices
+        Value >= {min}
+      vars: [min]
+      patch_add:
+        validation: {"gte": $min}
+    - match: |
+        ### Choices
 
-          - {listval}
-        vars: [listval]
-        list_patch_add:
-          choices/-: $listval
+        - {listval}
+      vars: [listval]
+      list_patch_add:
+        choices/-: $listval
 
 - start_match: |
     # Resource {id}
