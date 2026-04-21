@@ -26,8 +26,41 @@ def md_parse_body(body, schema):
     return Document(body)
 
 
+@dataclass
+class MatchResult:
+    tokens: int
+
+def match_content(mcontent: str, content: str, vars_: list[str]):
+    breakpoint()
+
+def match_block_tokens(
+    match_tokens: list[BlockToken], tokens: list[BlockToken], pos: int,
+    vars_: list[str],
+) -> MatchResult | None:
+
+    for i, match_token in enumerate(match_tokens):
+        try:
+            token = tokens[pos + i]
+        except IndexError:
+            return
+        if type(match_token) != type(token):
+            return
+
+        mtoks = match_token.children
+        toks = token.children
+        if len(mtoks) != len(toks):
+            return
+
+        for mt, t in zip(mtoks, toks):
+            if type(mt) != type(t):
+                return
+            match_content(mt.content, t.content, vars_)
+
+
 class MatchBase:
-    pass
+    def match_md(self, tokens: list[BlockToken], pos: int,
+            ) -> MatchResult | None:
+        return match_block_tokens(self.doc, tokens, pos, self.vars_)
 
 @dataclass
 class Match(MatchBase):
@@ -37,18 +70,25 @@ class Match(MatchBase):
 
 @dataclass
 class TableMatch(MatchBase):
-    doc: list[BlockToken]
+    cols: list[str]
     row_patch_add: dict[str: Any]
     row_submatch: dict[str: Any] | None = None
 
+    @property
+    def vars_(self):
+        return [f'${n + 1}' for n in range(len(self.cols))]
+
 @dataclass
 class ListMatch(MatchBase):
-    "vars_ = ['listval']"
     doc: list[BlockToken]
     list_patch_add: dict[str: Any]
 
+    @property
+    def vars_(self):
+        return ['listval']
+
 @dataclass
-class StartMatch(MatchBase):
+class HeadingMatch(MatchBase):
     doc: list[BlockToken]
     patch_path: str | None
     patch_add: dict[str: Any] | None
@@ -60,9 +100,9 @@ class UnknownMatch(Exception):
     pass
 
 def parse_match(m):
-    if md := m.get('start_match'):
+    if md := m.get('heading_match'):
         doc = Document(md).children
-        match = StartMatch(doc, m.get('patch_path'), m.get('patch_add'), m.get('vars'))
+        match = HeadingMatch(doc, m.get('patch_path'), m.get('patch_add'), m.get('vars'))
         if children := m.get('children'):
             match.children = parse_matches(children)
         if sections := m.get('sections'):
@@ -73,9 +113,8 @@ def parse_match(m):
         doc = Document(md).children
         return Match(doc, m.get('patch_add'), m.get('vars'))
 
-    if md := m.get('table_match'):
-        doc = Document(md).children
-        return TableMatch(doc, m['row_patch_add'], m.get('row_submatch'))
+    if cols := m.get('table_match'):
+        return TableMatch(cols, m['row_patch_add'], m.get('row_submatch'))
 
     if md := m.get('list_match'):
         doc = Document(md).children

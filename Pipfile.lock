@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "d3eb789dd360133eccd5384ffd9b2ca7ee89ab9eaed174925ffbb5202fec7c42"
+            "sha256": "7d8f909be3cf0db5e2f474946a0992f6c1e12ff5bf6993b2011fffbdb833551d"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,6 +16,23 @@
         ]
     },
     "default": {
+        "jsonpatch": {
+            "hashes": [
+                "sha256:0ae28c0cd062bbd8b8ecc26d7d164fbbea9652a1a3693f3b956c1eae5145dade",
+                "sha256:9fcd4009c41e6d12348b4a0ff2563ba56a2923a7dfee731d004e212e1ee5030c"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6'",
+            "version": "==1.33"
+        },
+        "jsonpointer": {
+            "hashes": [
+                "sha256:0b801c7db33a904024f6004d526dcc53bbb8a4a0f4e32bfd10beadf60adf1900",
+                "sha256:8ff8b95779d071ba472cf5bc913028df06031797532f08a7d5b602d8b2a488ca"
+            ],
+            "markers": "python_version >= '3.10'",
+            "version": "==3.1.1"
+        },
         "mistletoe": {
             "hashes": [
                 "sha256:c5571ce6ca9cfdc7ce9151c3ae79acb418e067812000907616427197648030a3",

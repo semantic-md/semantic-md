@@ -6,7 +6,7 @@
 semantic-md-version: 0
 
 sections:
-- start_match: |
+- heading_match: |
     # Dataset {id}
   vars: [id]
   patch_add:
@@ -20,9 +20,9 @@ sections:
       description: $desc
   - table_match: [Resource, Table, Title]
     row_patch_add:
-      resources/-: {"name": $0, "table": $1, "title": $2}
+      resources/-: {"name": $1, "table": $2, "title": $3}
 
-- start_match: |
+- heading_match: |
     # Table {id}
   vars: [id]
   patch_add:
@@ -31,9 +31,9 @@ sections:
   children:
   - table_match: [Column, Type, Label]
     row_patch_add:
-      columns/$0: {"label": $2}
+      columns/$1: {"label": $3}
     row_submatch:
-      against: $1
+      against: $2
       rules:
       - filter:
           match: |
@@ -52,10 +52,10 @@ sections:
 
   - table_match: [Primary key]
     row_patch_add:
-      primary_key/-: $0
+      primary_key/-: $1
 
   sections:
-  - start_match: |
+  - heading_match: |
       ## Column {id}
     vars: [id]
     patch_path: /columns/$id
@@ -73,15 +73,14 @@ sections:
       vars: [min]
       patch_add:
         validation: {"gte": $min}
-    - match: |
+    - list_match: |
         ### Choices
 
         - {listval}
-      vars: [listval]
       list_patch_add:
         choices/-: $listval
 
-- start_match: |
+- heading_match: |
     # Resource {id}
   vars: [id]
   patch_add:
@@ -95,13 +94,13 @@ sections:
       description: $desc
 
   sections:
-  - start_match: |
+  - heading_match: |
       ## Statistics
     children:
     - table_match: [Column, Min, Max, Cardinality, Null Count]
       row_patch_add:
-        columns/$0/statistics: {
-          "min": $1, "max": $2, "cardinality": $3, "null_count": $4,
+        columns/$1/statistics: {
+          "min": $2, "max": $3, "cardinality": $4, "null_count": $5,
         }
     - match: |
         ### Frequency for {col}

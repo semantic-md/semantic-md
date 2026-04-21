@@ -2,7 +2,7 @@ import os
 
 from yaml import safe_load
 
-from semantic_md import read
+from semantic_md import read, convert
 
 HERE = os.path.split(__file__)[0]
 
@@ -17,4 +17,6 @@ def test1():
 
     s = open(os.path.join(HERE, 'datadict.yml')).read()
     schema = read.Schema.read(s)
+
+    out = convert.to_json(parsed, schema)
     breakpoint()
