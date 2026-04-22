@@ -1,7 +1,9 @@
 import re
+import json
 from dataclasses import dataclass
 from typing import Any, Optional
 
+from jsonpatch import JsonPatch
 from mistletoe import Document
 from mistletoe.block_token import BlockToken
 from yaml import safe_load
@@ -63,6 +65,21 @@ def match_block_tokens(
 
     return MatchResult(len(tokens), vars_map)
 
+def apply_json_patch(
+    patch_add: dict[str: Any], vars_map: dict[str, str], json_doc: dict[str, Any],
+) -> dict[str, Any]:
+    filled_patch = {}
+    for path, json_value in patch_add.items():
+        jv = json.dumps(json_value)
+        for var, val in vars_map.items():
+            path = re.sub(r'\$' + var + r'\b', val, path)
+            jv = re.sub(r'(?<!\\)"\$' + var + '"', '"' + val + '"', jv)
+        filled_patch[path] = json.loads(jv)
+
+    return JsonPatch([
+        {'op': 'add', 'path': path, 'value': json_value}
+        for path, json_value in filled_patch.items()
+    ]).apply(json_doc)
 
 class MatchBase:
     def match_md(self, tokens: list[BlockToken], pos: int,
@@ -70,7 +87,7 @@ class MatchBase:
         return match_block_tokens(self.doc, tokens, pos, self.vars_)
 
     def patch(self, vars_map: dict[str, str], json_doc: dict[str, Any]) -> None:
-        pass #apply_json_patch(self.patch_add,
+        return apply_json_patch(self.patch_add, vars_map, json_doc)
 
 @dataclass
 class Match(MatchBase):

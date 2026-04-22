@@ -1,5 +1,3 @@
-from jsonpatch import JsonPatch
-
 from mistletoe import Document
 from mistletoe.block_token import BlockToken
 
@@ -16,7 +14,7 @@ def to_json(doc: Document, schema: Schema):
         for match in schema_stack[-1]:
             if result := match.match_md(doc.children, doc_pos):
                 doc_pos += result.tokens
-                match.patch(result.vars_map, json_doc)
+                json_doc = match.patch(result.vars_map, json_doc)
                 break
         else:
             raise NoMatch(doc.children[doc_pos])
