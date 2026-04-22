@@ -6,6 +6,8 @@ from mistletoe import Document
 from mistletoe.block_token import BlockToken
 from yaml import safe_load
 
+from .text import match_content, NoMatch
+
 MISTUNE_PLUGINS = ['table', 'def_list']
 
 class InputError(Exception):
@@ -29,15 +31,14 @@ def md_parse_body(body, schema):
 @dataclass
 class MatchResult:
     tokens: int
-
-def match_content(mcontent: str, content: str, vars_: list[str]):
-    breakpoint()
+    vars_map: dict[str, str]
 
 def match_block_tokens(
     match_tokens: list[BlockToken], tokens: list[BlockToken], pos: int,
     vars_: list[str],
 ) -> MatchResult | None:
 
+    vars_map = {var: None for var in vars_}
     for i, match_token in enumerate(match_tokens):
         try:
             token = tokens[pos + i]
@@ -51,16 +52,25 @@ def match_block_tokens(
         if len(mtoks) != len(toks):
             return
 
-        for mt, t in zip(mtoks, toks):
-            if type(mt) != type(t):
-                return
-            match_content(mt.content, t.content, vars_)
+        try:
+            for mt, t in zip(mtoks, toks):
+                if type(mt) != type(t):
+                    return
+                new_vars = match_content(vars_map, mt.content, t.content)
+                vars_map.update(new_vars)
+        except NoMatch:
+            return
+
+    return MatchResult(len(tokens), vars_map)
 
 
 class MatchBase:
     def match_md(self, tokens: list[BlockToken], pos: int,
             ) -> MatchResult | None:
         return match_block_tokens(self.doc, tokens, pos, self.vars_)
+
+    def patch(self, vars_map: dict[str, str], json_doc: dict[str, Any]) -> None:
+        pass #apply_json_patch(self.patch_add,
 
 @dataclass
 class Match(MatchBase):
