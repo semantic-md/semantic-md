@@ -10,7 +10,8 @@ sections:
     # Dataset {id}
   vars: [id]
   patch_add:
-    /datasets: {$id: {}}
+    datasets: {$id: {"resources": []}}
+  patch_path: datasets/$id
 
   children:
   - match: |
@@ -20,13 +21,13 @@ sections:
       description: $desc
   - table_match: [Resource, Table, Title]
     row_patch_add:
-      /resources/-: {"name": $1, "table": $2, "title": $3}
+      resources/-: {"name": $1, "table": $2, "title": $3}
 
 - heading_match: |
     # Table {id}
   vars: [id]
   patch_add:
-    /tables/$id: {}
+    tables/$id: {}
 
   children:
   - table_match: [Column, Type, Label]
