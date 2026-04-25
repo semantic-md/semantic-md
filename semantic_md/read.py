@@ -99,26 +99,32 @@ def match_table_columns(
 
     return TableMatchResult(1, vars_map, table.children)
 
+def apply_path_vars(path: str, vars_map: dict[str, str]):
+    for var, val in vars_map.items():
+        # FIXME: jsonpath escaping for val?
+        path = re.sub(r'\$' + var + r'\b', val, path)
+    return path
+
 def apply_json_patch(
     patch_add: dict[str: Any], vars_map: dict[str, str], json_doc: dict[str, Any],
+    prefix: str
 ) -> dict[str, Any]:
     filled_patch = {}
     for path, json_value in patch_add.items():
         jv = json.dumps(json_value)
+        path = apply_path_vars(path, vars_map)
         for var, val in vars_map.items():
-            # FIXME: jsonpath escaping for val?
-            path = re.sub(r'\$' + var + r'\b', val, path)
             jv = re.sub(r'(?<!\\)"\$' + var + '"', json.dumps(val), jv)
-        filled_patch['/' + path] = json.loads(jv)
+        filled_patch[path] = json.loads(jv)
 
     return JsonPatch([
-        {'op': 'add', 'path': path, 'value': json_value}
+        {'op': 'add', 'path': prefix + path, 'value': json_value}
         for path, json_value in filled_patch.items()
     ]).apply(json_doc)
 
 def apply_table_json_patch(
     row_patch_add: dict[str: Any], result: TableMatchResult,
-    json_doc: dict[str, Any],
+    json_doc: dict[str, Any], prefix: str,
 ) -> dict[str, Any]:
     # FIXME: assuming cells are always a single RawText
     for row in result.table_data:
@@ -126,7 +132,8 @@ def apply_table_json_patch(
             f'${i + 1}': cell.children[0].content
             for i, cell in enumerate(row.children)
         }
-        json_doc = apply_json_patch(row_patch_add, vars_map, json_doc)
+        json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
+    return json_doc
     
 
 class MatchBase:
@@ -134,8 +141,10 @@ class MatchBase:
     ) -> MatchResult | None:
         return match_block_tokens(self.doc, tokens, pos, self.vars_)
 
-    def patch(self, result: MatchResult, json_doc: dict[str, Any]) -> None:
-        return apply_json_patch(self.patch_add, result.vars_map, json_doc)
+    def patch(
+        self, result: MatchResult, json_doc: dict[str, Any], prefix: str
+    ) -> dict[str, Any]:
+        return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
 
 @dataclass
 class Match(MatchBase):
@@ -157,9 +166,10 @@ class TableMatch(MatchBase):
     ) -> TableMatchResult | None:
         return match_table_columns(self.cols, tokens, pos)
 
-    def patch(self, result: TableMatchResult, json_doc: dict[str, Any]
+    def patch(
+        self, result: TableMatchResult, json_doc: dict[str, Any], prefix: str
     ) -> dict[str, Any]:
-        return apply_table_json_patch(self.row_patch_add, result, json_doc)
+        return apply_table_json_patch(self.row_patch_add, result, json_doc, prefix)
 
 @dataclass
 class ListMatch(MatchBase):
@@ -216,6 +226,7 @@ class Schema:
 
         assert set(y) == {'sections', 'semantic-md-version'}
         schema = cls()
-        schema.sections = parse_matches(y['sections'])
+        schema.children = parse_matches(y.get('children', []))
+        schema.sections = parse_matches(y.get('sections', []))
 
         return schema

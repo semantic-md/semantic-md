@@ -27,7 +27,8 @@ sections:
     # Table {id}
   vars: [id]
   patch_add:
-    tables/$id: {}
+    tables: {$id: {"primary_key": []}}
+  patch_path: tables/$id
 
   children:
   - table_match: [Column, Type, Label]
