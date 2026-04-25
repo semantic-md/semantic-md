@@ -144,7 +144,8 @@ class MatchBase:
     def patch(
         self, result: MatchResult, json_doc: dict[str, Any], prefix: str
     ) -> dict[str, Any]:
-        return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
+        if self.patch_add:
+            return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
 
 @dataclass
 class Match(MatchBase):

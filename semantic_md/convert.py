@@ -1,5 +1,6 @@
 from mistletoe import Document
 from mistletoe.block_token import BlockToken, Heading
+from mistletoe.markdown_renderer import MarkdownRenderer
 
 from .read import Schema, HeadingMatch, apply_path_vars
 from .text import NoMatch
@@ -12,7 +13,8 @@ class MatchFrame:
 
     def __iter__(self):
         yield from self.children
-        yield from self.schema.sections
+        if self.schema.sections:
+            yield from self.schema.sections
 
 
 def to_json(doc: Document, schema: Schema):
@@ -47,7 +49,8 @@ def to_json(doc: Document, schema: Schema):
                     )
                 break
         else:
-            raise NoMatch(doc.children[doc_pos])
+            with MarkdownRenderer() as renderer:
+                raise NoMatch('\n' + renderer.render(doc.children[doc_pos]))
     breakpoint()
 
     return json_doc

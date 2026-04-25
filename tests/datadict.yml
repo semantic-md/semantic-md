@@ -64,7 +64,7 @@ sections:
 
     children:
     - match: |
-        > {desc}
+        > {desc|md}
       vars: [desc]
       patch_add:
         description: $desc
