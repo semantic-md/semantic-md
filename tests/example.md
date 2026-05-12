@@ -4,7 +4,7 @@ semantic-md: datadict.yml
 
 # Dataset 311 NYC Data
 
-> 311 NYC dataset example
+311 NYC dataset example
 
 | Resource | Table | Title |
 | --- | --- | --- |
@@ -24,25 +24,25 @@ semantic-md: datadict.yml
 
 ## Column Unique Key
 
-> A unique numeric identifier for each complaint record.
->
-> It is the primary key in the dataset and has 1,000,000 distinct values (100% uniqueness).
+A unique numeric identifier for each complaint record.
+
+It is the primary key in the dataset and has 1,000,000 distinct values (100% uniqueness).
 
 ### Validation
 
-Value >= 1
+Values >= 1
 
 ## Column Created Date
 
-> UTC timestamp indicating when a 311 service request was logged.
->
-> The dates span from January 1 2010 to December 23 2020 with a mean around November 10 2015. Approximately 84% of records have missing values.
+UTC timestamp indicating when a 311 service request was logged.
+
+The dates span from January 1 2010 to December 23 2020 with a mean around November 10 2015. Approximately 84% of records have missing values.
 
 ## Column Status
 
-> Current processing status—Closed, Pending, Open, etc.
->
-> Closed complaints dominate (~95 %), with small percentages remaining pending or open.
+Current processing status—Closed, Pending, Open, etc.
+
+Closed complaints dominate (~95 %), with small percentages remaining pending or open.
 
 ### Choices
 

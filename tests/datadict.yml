@@ -15,7 +15,7 @@ sections:
 
   children:
   - match: |
-      > {desc}
+      {desc | md}
     vars: [desc]
     patch_add:
       description: $desc
@@ -27,13 +27,13 @@ sections:
     # Table {id}
   vars: [id]
   patch_add:
-    tables: {$id: {"primary_key": []}}
+    tables: {$id: {"primary_key": [], "columns": {}}}
   patch_path: tables/$id
 
   children:
   - table_match: [Column, Type, Label]
     row_patch_add:
-      columns: {$1: {"label": $3}}
+      columns/$1: {"label": $3}
     row_submatch:
       against: $2
       rules:
@@ -60,18 +60,18 @@ sections:
   - heading_match: |
       ## Column {id}
     vars: [id]
-    patch_path: /columns/$id
+    patch_path: columns/$id
 
     children:
     - match: |
-        > {desc|md}
+        {desc | md}
       vars: [desc]
       patch_add:
         description: $desc
     - match: |
         ### Validation
 
-        Value >= {min}
+        Values >= {min}
       vars: [min]
       patch_add:
         validation: {"gte": $min}

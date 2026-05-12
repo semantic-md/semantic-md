@@ -1,6 +1,6 @@
 from mistletoe import Document
 from mistletoe.block_token import BlockToken, Heading
-from mistletoe.markdown_renderer import MarkdownRenderer
+from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 
 from .read import Schema, HeadingMatch, apply_path_vars
 from .text import NoMatch
@@ -25,7 +25,12 @@ def to_json(doc: Document, schema: Schema):
     json_doc = {}
 
     while doc_pos < len(doc.children):
-        if isinstance(tok := doc.children[doc_pos], Heading):
+        tok = doc.children[doc_pos]
+        if isinstance(tok, BlankLine):
+            doc_pos += 1
+            continue
+
+        if isinstance(tok, Heading):
             while tok.level <= heading_level:
                 schema_stack.pop()
                 prefix_stack.pop()

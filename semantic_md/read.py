@@ -4,8 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from jsonpatch import JsonPatch
+from jsonpointer import resolve_pointer, JsonPointerException
 from mistletoe import Document
-from mistletoe.block_token import BlockToken, Table, TableCell
+from mistletoe.block_token import (
+    BlockToken, Table, TableCell, Paragraph, Quote, BlockCode, CodeFence,
+    List, HtmlBlock,
+)
+from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 from mistletoe.span_token import RawText
 from mistletoe.token import Token
 from yaml import safe_load
@@ -13,6 +18,11 @@ from yaml import safe_load
 from .text import match_content, NoMatch
 
 MISTUNE_PLUGINS = ['table', 'def_list']
+
+MD_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*md\s*}\s*$')
+MD_FILTER_TYPES = (
+    Paragraph, Quote, BlockCode, CodeFence, List, HtmlBlock
+)
 
 class InputError(Exception):
     pass
@@ -29,7 +39,9 @@ def md_parse_front_matter(s):
 
 
 def md_parse_body(body, schema):
-    return Document(body)
+    # context manager required for creation of BlankLine, etc.
+    with MarkdownRenderer() as renderer:
+        return Document(body)
 
 
 @dataclass
@@ -41,48 +53,84 @@ class MatchResult:
 class TableMatchResult(MatchResult):
     table_data: list[Token]
 
+
+def is_md_filter_var(match_token):
+    if not isinstance(match_token, Paragraph):
+        return
+    md_var = MD_FILTER_VAR.match(match_token.children[0].content)
+    if md_var:
+        return md_var.group(1)
+
 def match_content_tree(
-    vars_map: dict[str, str|None], match_token: Token, token: Token
-):
-    if type(match_token) != type(token):
-        raise NoMatch()
+    vars_map: dict[str, str|None], match_token: Token,
+    tokens: list[Token], token_pos: int,
+) -> int:
+    """
+    returns number of tokens matched by match_token starting
+    from tokens[token_pos]. On match updates vars_map in-place.
+    """
+    if md_var := is_md_filter_var(match_token):
+        for i in range(token_pos, len(tokens)):
+            if not isinstance(tokens[i], MD_FILTER_TYPES):
+                break
+        with MarkdownRenderer() as renderer:
+            md = ''.join(
+                renderer.render(tokens[j]) for j in range(token_pos, i)
+            )
+        if vars_map[md_var] is None:
+            vars_map[md_var] = md
+        elif vars_map[md_var] != md:
+            return 0
+        return i - token_pos
+
+    if not isinstance(tokens[token_pos], type(match_token)):
+        return 0
 
     if mtoks := match_token.children:
-        toks = token.children
-        if len(mtoks) != len(toks):
-            raise NoMatch()
-
-        for mt, t in zip(mtoks, toks):
-            match_content_tree(vars_map, mt, t)
+        toks = tokens[token_pos].children
+        pos = 0
+        for mt in mtoks:
+            if pos > len(toks):
+                return 0
+            if not (matched := match_content_tree(vars_map, mt, toks, pos)):
+                return 0
+            pos += matched
+        if pos < len(toks):
+            return 0
 
     if hasattr(match_token, "content"):
-        new_vars = match_content(vars_map, match_token.content, token.content)
+        try:
+            new_vars = match_content(
+                vars_map, match_token.content, tokens[token_pos].content)
+        except NoMatch:
+            return 0
         vars_map.update(new_vars)
+    return 1
 
 def match_block_tokens(
-    match_tokens: list[BlockToken], tokens: list[BlockToken], pos: int,
-    vars_: list[str],
+    match_tokens: list[BlockToken], tokens: list[BlockToken],
+    token_pos: int, vars_: list[str],
 ) -> MatchResult | None:
 
     vars_map = {var: None for var in vars_}
-    for i, match_token in enumerate(match_tokens):
-        try:
-            token = tokens[pos + i]
-        except IndexError:
+    i = 0
+    for match_token in match_tokens:
+        if i > len(tokens):
             return
 
-        try:
-            match_content_tree(vars_map, match_token, token)
-        except NoMatch:
+        if not (matched := match_content_tree(
+            vars_map, match_token, tokens, token_pos + i
+        )):
             return
+        i += matched
 
-    return MatchResult(len(match_tokens), vars_map)
+    return MatchResult(i, vars_map)
 
 def match_table_columns(
     cols: list[str], tokens: list[BlockToken], pos: int,
 ) -> MatchResult | None:
     vars_map = {}
-    
+
     table = tokens[pos]
     if not isinstance(table, Table):
         return
@@ -93,7 +141,7 @@ def match_table_columns(
     try:
         for i, txt in enumerate(cols):
             match_content_tree(
-                vars_map, TableCell(content=txt), table.header.children[i])
+                vars_map, TableCell(content=txt), table.header.children, i)
     except NoMatch:
         return
 
@@ -102,7 +150,7 @@ def match_table_columns(
 def apply_path_vars(path: str, vars_map: dict[str, str]):
     for var, val in vars_map.items():
         # FIXME: jsonpath escaping for val?
-        path = re.sub(r'\$' + var + r'\b', val, path)
+        path = re.sub(r'\$' + var + r'\b', lambda m: val, path)
     return path
 
 def apply_json_patch(
@@ -114,13 +162,25 @@ def apply_json_patch(
         jv = json.dumps(json_value)
         path = apply_path_vars(path, vars_map)
         for var, val in vars_map.items():
-            jv = re.sub(r'(?<!\\)"\$' + var + '"', json.dumps(val), jv)
+            jv = re.sub(
+                r'(?<!\\)"\$' + var + '"',
+                lambda m: json.dumps(val),
+                jv
+            )
         filled_patch[path] = json.loads(jv)
 
-    return JsonPatch([
+#    try:
+#        resolve_pointer(json_doc, prefix)
+    init = []
+#    except JsonPointerException:
+#        # init empty object at prefix if one doesn't exist yet
+#        init = [{'op': 'add', 'path': prefix, 'value': {}}]
+
+    operations = init + [
         {'op': 'add', 'path': prefix + path, 'value': json_value}
         for path, json_value in filled_patch.items()
-    ]).apply(json_doc)
+    ]
+    return JsonPatch(operations).apply(json_doc)
 
 def apply_table_json_patch(
     row_patch_add: dict[str: Any], result: TableMatchResult,
@@ -129,12 +189,12 @@ def apply_table_json_patch(
     # FIXME: assuming cells are always a single RawText
     for row in result.table_data:
         vars_map = {
-            f'${i + 1}': cell.children[0].content
+            f'{i + 1}': cell.children[0].content
             for i, cell in enumerate(row.children)
         }
         json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
     return json_doc
-    
+
 
 class MatchBase:
     def match_md(self, tokens: list[BlockToken], pos: int,
@@ -146,6 +206,7 @@ class MatchBase:
     ) -> dict[str, Any]:
         if self.patch_add:
             return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
+        return json_doc
 
 @dataclass
 class Match(MatchBase):
