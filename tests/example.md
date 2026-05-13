@@ -6,6 +6,8 @@ semantic-md: datadict.yml
 
 311 NYC dataset example
 
+And some extra text for |md to match
+
 | Resource | Table | Title |
 | --- | --- | --- |
 | NYC_311_SR_2010-2020-sample-1M.csv | 311nyc | NYC 311 Data 1M row sample |

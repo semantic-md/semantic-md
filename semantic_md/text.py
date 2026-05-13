@@ -29,5 +29,6 @@ def match_content(
 
     return {
         var: m.group('g' + var)
-        for var, val in vars_map.items() if val is None
+        for var, val in vars_map.items()
+        if val is None and 'g' + var in m.groupdict()
     }

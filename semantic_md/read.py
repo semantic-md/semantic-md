@@ -21,7 +21,7 @@ MISTUNE_PLUGINS = ['table', 'def_list']
 
 MD_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*md\s*}\s*$')
 MD_FILTER_TYPES = (
-    Paragraph, Quote, BlockCode, CodeFence, List, HtmlBlock
+    Paragraph, Quote, BlockCode, CodeFence, List, HtmlBlock, BlankLine,
 )
 
 class InputError(Exception):
@@ -70,12 +70,15 @@ def match_content_tree(
     from tokens[token_pos]. On match updates vars_map in-place.
     """
     if md_var := is_md_filter_var(match_token):
+        nonblank = token_pos
         for i in range(token_pos, len(tokens)):
             if not isinstance(tokens[i], MD_FILTER_TYPES):
                 break
+            if not isinstance(tokens[i], BlankLine):
+                nonblank = i
         with MarkdownRenderer() as renderer:
             md = ''.join(
-                renderer.render(tokens[j]) for j in range(token_pos, i)
+                renderer.render(tokens[j]) for j in range(token_pos, nonblank + 1)
             )
         if vars_map[md_var] is None:
             vars_map[md_var] = md
@@ -115,7 +118,7 @@ def match_block_tokens(
     vars_map = {var: None for var in vars_}
     i = 0
     for match_token in match_tokens:
-        if i > len(tokens):
+        if token_pos + i >= len(tokens):
             return
 
         if not (matched := match_content_tree(
@@ -123,6 +126,11 @@ def match_block_tokens(
         )):
             return
         i += matched
+
+        while token_pos + i < len(tokens) and isinstance(
+            tokens[token_pos + i], BlankLine
+        ):
+            i += 1
 
     return MatchResult(i, vars_map)
 

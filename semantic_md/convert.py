@@ -55,7 +55,10 @@ def to_json(doc: Document, schema: Schema):
                 break
         else:
             with MarkdownRenderer() as renderer:
-                raise NoMatch('\n' + renderer.render(doc.children[doc_pos]))
+                raise NoMatch(
+                    f'line {doc.children[doc_pos].line_number}\n'
+                    + renderer.render(doc.children[doc_pos])
+                )
     breakpoint()
 
     return json_doc
