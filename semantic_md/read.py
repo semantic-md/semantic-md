@@ -8,7 +8,7 @@ from jsonpointer import resolve_pointer, JsonPointerException
 from mistletoe import Document
 from mistletoe.block_token import (
     BlockToken, Table, TableCell, Paragraph, Quote, BlockCode, CodeFence,
-    List, HtmlBlock,
+    List, ListItem, HtmlBlock,
 )
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 from mistletoe.span_token import RawText
@@ -23,6 +23,8 @@ MD_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*md\s*}\s*$')
 MD_FILTER_TYPES = (
     Paragraph, Quote, BlockCode, CodeFence, List, HtmlBlock, BlankLine,
 )
+
+LIST_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*list\s*}\s*$')
 
 class InputError(Exception):
     pass
@@ -55,11 +57,26 @@ class TableMatchResult(MatchResult):
 
 
 def is_md_filter_var(match_token):
-    if not isinstance(match_token, Paragraph):
-        return
-    md_var = MD_FILTER_VAR.match(match_token.children[0].content)
-    if md_var:
+    """{var|md}"""
+    if (
+        isinstance(match_token, Paragraph) and
+        len(match_token.children) == 1 and
+        (md_var := MD_FILTER_VAR.match(match_token.children[0].content))
+    ):
         return md_var.group(1)
+
+def is_list_filter_var(match_token):
+    """- {var|list}"""
+    if (
+        isinstance(match_token, List) and
+        len(match_token.children) == 1 and
+        isinstance(li := match_token.children[0], ListItem) and
+        len(li.children) == 1 and
+        isinstance(p := li.children[0], Paragraph) and
+        len(p.children) == 1 and
+        (list_var := LIST_FILTER_VAR.match(p.children[0].content))
+    ):
+        return list_var.group(1)
 
 def match_content_tree(
     vars_map: dict[str, str|None], match_token: Token,
@@ -85,6 +102,18 @@ def match_content_tree(
         elif vars_map[md_var] != md:
             return 0
         return i - token_pos
+
+    if list_var := is_list_filter_var(match_token):
+        # FIXME: handle non-single-paragraph lists
+        list_vals = [
+            c.children[0].children[0].content
+            for c in tokens[token_pos].children
+        ]
+        if vars_map[list_var] is None:
+            vars_map[list_var] = list_vals
+        elif vars_map[list_var] != listvals:
+            return 0
+        return 1
 
     if not isinstance(tokens[token_pos], type(match_token)):
         return 0
@@ -242,15 +271,6 @@ class TableMatch(MatchBase):
         return apply_table_json_patch(self.row_patch_add, result, json_doc, prefix)
 
 @dataclass
-class ListMatch(MatchBase):
-    doc: list[BlockToken]
-    list_patch_add: dict[str: Any]
-
-    @property
-    def vars_(self):
-        return ['listval']
-
-@dataclass
 class HeadingMatch(MatchBase):
     doc: list[BlockToken]
     patch_path: str | None
@@ -278,10 +298,6 @@ def parse_match(m):
 
     if cols := m.get('table_match'):
         return TableMatch(cols, m['row_patch_add'], m.get('row_submatch'))
-
-    if md := m.get('list_match'):
-        doc = Document(md).children
-        return ListMatch(doc, m['list_patch_add'])
 
     raise UnknownMatch(m)
 

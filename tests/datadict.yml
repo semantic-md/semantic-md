@@ -75,12 +75,13 @@ sections:
       vars: [min]
       patch_add:
         validation: {"gte": $min}
-    - list_match: |
+    - match: |
         ### Choices
 
-        - {listval}
+        - {vals | list}
+      vars: [vals]
       list_patch_add:
-        choices/-: $listval
+        choices: $vals
 
 - heading_match: |
     # Resource {id}
