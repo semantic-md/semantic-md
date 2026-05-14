@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 from jsonpatch import JsonPatch
-from jsonpointer import resolve_pointer, JsonPointerException
+from jsonpointer import JsonPointer
 from mistletoe import Document
 from mistletoe.block_token import (
     BlockToken, Table, TableCell, Paragraph, Quote, BlockCode, CodeFence,
@@ -144,7 +144,7 @@ def match_block_tokens(
     token_pos: int, vars_: list[str],
 ) -> MatchResult | None:
 
-    vars_map = {var: None for var in vars_}
+    vars_map = {var: None for var in vars_ or []}
     i = 0
     for match_token in match_tokens:
         if token_pos + i >= len(tokens):
@@ -206,14 +206,21 @@ def apply_json_patch(
             )
         filled_patch[path] = json.loads(jv)
 
-#    try:
-#        resolve_pointer(json_doc, prefix)
-    init = []
-#    except JsonPointerException:
-#        # init empty object at prefix if one doesn't exist yet
-#        init = [{'op': 'add', 'path': prefix, 'value': {}}]
+    # create missing objects in paths
+    prefix_pos = json_doc
+    for step in JsonPointer(prefix).get_parts()[:-1]:
+        prefix_pos = prefix_pos.setdefault(step, {})
+    for path, json_value in filled_patch.items():
+        if path:
+            path_pos = prefix_pos
+            steps = JsonPointer('/' + path).get_parts()
+            for i, step in enumerate(steps):
+                if steps[-1:] == ['-'] and i == len(steps) - 1:
+                    path_pos = path_pos.setdefault(step, [])
+                    break
+                path_pos = path_pos.setdefault(step, {})
 
-    operations = init + [
+    operations = [
         {'op': 'add', 'path': prefix + path, 'value': json_value}
         for path, json_value in filled_patch.items()
     ]

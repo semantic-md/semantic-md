@@ -59,7 +59,7 @@ Closed complaints dominate (~95 %), with small percentages remaining pending o
 - Unassigned
 - Unspecified
 
-# Resource NYC\_311\_SR\_2010-2020-sample-1M.csv
+# Resource NYC_311_SR_2010-2020-sample-1M.csv
 
 ## Statistics
 

@@ -10,7 +10,7 @@ sections:
     # Dataset {id}
   vars: [id]
   patch_add:
-    datasets: {$id: {"resources": []}}
+    datasets/$id: {}
   patch_path: datasets/$id
 
   children:
@@ -27,7 +27,7 @@ sections:
     # Table {id}
   vars: [id]
   patch_add:
-    tables: {$id: {"primary_key": [], "columns": {}}}
+    tables/$id: {}
   patch_path: tables/$id
 
   children:
@@ -60,6 +60,8 @@ sections:
   - heading_match: |
       ## Column {id}
     vars: [id]
+    patch_add:
+      columns/$id: {}
     patch_path: columns/$id
 
     children:
@@ -80,14 +82,14 @@ sections:
 
         - {vals | list}
       vars: [vals]
-      list_patch_add:
+      patch_add:
         choices: $vals
 
 - heading_match: |
     # Resource {id}
   vars: [id]
   patch_add:
-    /resources/$id: {}
+    resources/$id: {}
 
   children:
   - match: |
