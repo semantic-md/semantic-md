@@ -130,7 +130,7 @@ def match_content_tree(
         if pos < len(toks):
             return 0
 
-    if hasattr(match_token, "content"):
+    if isinstance(match_token, RawText) and hasattr(match_token, "content"):
         try:
             new_vars = match_content(
                 vars_map, match_token.content, tokens[token_pos].content)

@@ -90,10 +90,11 @@ sections:
   vars: [id]
   patch_add:
     resources/$id: {}
+  patch_path: resource/$id
 
   children:
   - match: |
-      > {desc}
+      {desc | md}
     vars: [desc]
     patch_add:
       description: $desc
@@ -107,7 +108,7 @@ sections:
         columns/$1/statistics: {
           "min": $2, "max": $3, "cardinality": $4, "null_count": $5,
         }
-    - match: |
+    - heading_match: |
         ### Frequency for {col}
       vars: [col]
       patch_path: columns/$col

@@ -37,6 +37,8 @@ def to_json(doc: Document, schema: Schema):
                 heading_level -= 1
 
         for match in schema_stack[-1]:
+#            if hasattr(match, 'doc') and match.doc[0].children[0].content == 'Frequency for {col}':
+#                breakpoint()
             if result := match.match_md(doc.children, doc_pos):
                 doc_pos += result.tokens
                 json_doc = match.patch(result, json_doc, ''.join(prefix_stack))
