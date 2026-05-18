@@ -35,22 +35,14 @@ sections:
     row_patch_add:
       columns/$1: {"label": $3}
     row_submatch:
-      against: $2
-      rules:
-      - filter:
-          match: |
-            required {}
+      $2:
+        - filter_match: "required {content}"
           patch_add:
-            required: true
-      - match: integer
-        patch_add:
-          type: integer
-      - match: timestamp
-        patch_add:
-          type: timestamp
-      - match: text
-        patch_add:
-          type: text
+            columns/$1/required: true
+        - match: "{typename}"
+          vars: [typename]
+          patch_add:
+            columns/$1/type: $typename
 
   - table_match: [Primary key]
     row_patch_add:

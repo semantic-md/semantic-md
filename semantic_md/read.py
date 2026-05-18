@@ -164,7 +164,8 @@ def match_block_tokens(
     return MatchResult(i, vars_map)
 
 def match_table_columns(
-    cols: list[str], tokens: list[BlockToken], pos: int,
+    cols: list[str], row_submatch: dict[str: Any] | None,
+    tokens: list[BlockToken], pos: int,
 ) -> MatchResult | None:
     vars_map = {}
 
@@ -181,6 +182,10 @@ def match_table_columns(
                 vars_map, TableCell(content=txt), table.header.children, i)
     except NoMatch:
         return
+
+    if row_submatch:
+        # FIXME: check that submatch matches
+        pass
 
     return TableMatchResult(1, vars_map, table.children)
 
@@ -227,8 +232,8 @@ def apply_json_patch(
     return JsonPatch(operations).apply(json_doc)
 
 def apply_table_json_patch(
-    row_patch_add: dict[str: Any], result: TableMatchResult,
-    json_doc: dict[str, Any], prefix: str,
+    row_patch_add: dict[str: Any], row_submatch: dict[str: Any] | None,
+    result: TableMatchResult, json_doc: dict[str, Any], prefix: str,
 ) -> dict[str, Any]:
     # FIXME: assuming cells are always a single RawText
     for row in result.table_data:
@@ -236,6 +241,29 @@ def apply_table_json_patch(
             f'{i + 1}': cell.children[0].content
             for i, cell in enumerate(row.children)
         }
+        for rm, rules in (row_submatch or {}).items():
+            src = apply_path_vars(rm, vars_map)
+            for rule in rules:
+                if flt := rule.get('filter_match'):
+                    try:
+                        content_vars = match_content(
+                            {'content': None}, flt, src)
+                    except NoMatch:
+                        continue
+                    if cmatch := content_vars['content']:
+                        src = cmatch
+                    json_doc = apply_json_patch(
+                        rule['patch_add'], vars_map, json_doc, prefix)
+
+                if mat := rule.get('match'):
+                    mvars = {var: None for var in rule['vars'] or []}
+                    try:
+                        mvars = match_content(mvars, mat, src)
+                    except NoMatch:
+                        continue
+                    json_doc = apply_json_patch(
+                        rule['patch_add'], {**vars_map, **mvars}, json_doc, prefix)
+
         json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
     return json_doc
 
@@ -270,12 +298,14 @@ class TableMatch(MatchBase):
 
     def match_md(self, tokens: list[BlockToken], pos: int,
     ) -> TableMatchResult | None:
-        return match_table_columns(self.cols, tokens, pos)
+        return match_table_columns(self.cols, self.row_submatch, tokens, pos)
 
     def patch(
         self, result: TableMatchResult, json_doc: dict[str, Any], prefix: str
     ) -> dict[str, Any]:
-        return apply_table_json_patch(self.row_patch_add, result, json_doc, prefix)
+        return apply_table_json_patch(
+            self.row_patch_add, self.row_submatch, result, json_doc, prefix,
+        )
 
 @dataclass
 class HeadingMatch(MatchBase):
