@@ -54,9 +54,6 @@
         }
     },
     "resources": {
-        "NYC_311_SR_2010-2020-sample-1M.csv": {}
-    },
-    "resource": {
         "NYC_311_SR_2010-2020-sample-1M.csv": {
             "columns": {
                 "Unique Key": {

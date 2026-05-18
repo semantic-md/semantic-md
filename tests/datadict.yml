@@ -78,9 +78,7 @@ sections:
 - heading_match: |
     # Resource {id}
   vars: [id]
-  patch_add:
-    resources/$id: {}
-  patch_path: resource/$id
+  patch_path: resources/$id
 
   children:
   - match: |
