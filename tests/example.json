@@ -80,7 +80,10 @@
                         "null_count": "0"
                     },
                     "frequency": {
-                        "$0": "Assigned"
+                        "Assigned": "6651",
+                        "In Progress": "7841",
+                        "Open": "12340",
+                        "Pending": "20119"
                     }
                 }
             }

@@ -104,4 +104,4 @@ sections:
       children:
       - table_match: [Choice, Frequency]
         row_patch_add:
-          frequency/$0: $1
+          frequency/$1: $2
