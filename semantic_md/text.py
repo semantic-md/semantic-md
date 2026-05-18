@@ -1,10 +1,14 @@
 import re
 
+
 class NoMatch(Exception):
     pass
 
+
 def match_content(
-    vars_map: dict[str, str | None], pattern: str, content: str,
+    vars_map: dict[str, str | None],
+    pattern: str,
+    content: str,
 ) -> dict[str, str]:
     """
     Collect/apply vars_map to {key} values in pattern against

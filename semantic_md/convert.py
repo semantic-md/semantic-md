@@ -5,6 +5,7 @@ from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 from .read import Schema, HeadingMatch, apply_path_vars
 from .text import NoMatch
 
+
 class MatchFrame:
     def __init__(self, schema: Schema | HeadingMatch):
         self.schema = schema
@@ -50,7 +51,8 @@ def to_json(doc: Document, schema: Schema):
                     schema_stack.append(MatchFrame(match))
                     prefix_stack.append(
                         apply_path_vars(match.patch_path, result.vars_map) + '/'
-                        if match.patch_path else ''
+                        if match.patch_path
+                        else ''
                     )
                 break
         else:

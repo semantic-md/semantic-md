@@ -21,3 +21,11 @@ license-files = ["LICEN[CS]E*"]
 [project.urls]
 Homepage = "https://github.com/semantic-md/semantic-md"
 Issues = "https://github.com/semantic-md/semantic-md/issues"
+
+[tool.ruff]
+line-length = 90
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
+line-ending = "lf"
