@@ -33,7 +33,7 @@ sections:
   children:
   - table_match: [Column, Type, Label]
     row_patch_add:
-      columns/$1: {"label": $3}
+      columns/$1/label: $3
     row_submatch:
       $2:
         - filter_match: "required {content}"
@@ -52,8 +52,6 @@ sections:
   - heading_match: |
       ## Column {id}
     vars: [id]
-    patch_add:
-      columns/$id: {}
     patch_path: columns/$id
 
     children:

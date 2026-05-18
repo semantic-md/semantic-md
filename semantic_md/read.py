@@ -241,6 +241,8 @@ def apply_table_json_patch(
             f'{i + 1}': cell.children[0].content
             for i, cell in enumerate(row.children)
         }
+        json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
+
         for rm, rules in (row_submatch or {}).items():
             src = apply_path_vars(rm, vars_map)
             for rule in rules:
@@ -255,7 +257,7 @@ def apply_table_json_patch(
                     json_doc = apply_json_patch(
                         rule['patch_add'], vars_map, json_doc, prefix)
 
-                if mat := rule.get('match'):
+                elif mat := rule.get('match'):
                     mvars = {var: None for var in rule['vars'] or []}
                     try:
                         mvars = match_content(mvars, mat, src)
@@ -263,8 +265,6 @@ def apply_table_json_patch(
                         continue
                     json_doc = apply_json_patch(
                         rule['patch_add'], {**vars_map, **mvars}, json_doc, prefix)
-
-        json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
     return json_doc
 
 
