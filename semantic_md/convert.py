@@ -1,9 +1,25 @@
+import re
+from yaml import safe_load
+
 from mistletoe import Document
 from mistletoe.block_token import Heading
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 
-from .match import Schema, HeadingMatch, apply_path_vars
+from .match import HeadingMatch, apply_path_vars, parse_matches
 from .text import NoMatch
+
+
+class Schema:
+    @classmethod
+    def read(cls, yaml_str):
+        y = safe_load(yaml_str)
+
+        assert set(y) == {'sections', 'semantic-md-version'}
+        schema = cls()
+        schema.children = parse_matches(y.get('children', []))
+        schema.sections = parse_matches(y.get('sections', []))
+
+        return schema
 
 
 class MatchFrame:
@@ -63,3 +79,24 @@ def to_json(doc: Document, schema: Schema):
                 )
 
     return json_doc
+
+
+class InputError(Exception):
+    pass
+
+
+def md_parse_front_matter(s):
+    parts = re.split(r'^---\s*$', s, 2, flags=re.MULTILINE)
+    if len(parts) != 3 or parts[0].strip() or '\n' not in parts[1]:
+        raise InputError('expected yaml front matter not found')
+
+    front = safe_load(parts[1])
+    body = parts[2]
+
+    return front, body
+
+
+def md_parse_body(body, schema):
+    # context manager required for creation of BlankLine, etc.
+    with MarkdownRenderer():
+        return Document(body)

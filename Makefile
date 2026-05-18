@@ -6,5 +6,8 @@ test-interactive:
 check:
 	ruff check
 
+check-fix:
+	ruff check --fix
+
 format:
 	ruff format

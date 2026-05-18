@@ -21,7 +21,6 @@ from mistletoe.block_token import (
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 from mistletoe.span_token import RawText
 from mistletoe.token import Token
-from yaml import safe_load
 
 from .text import match_content, NoMatch
 
@@ -39,27 +38,6 @@ MD_FILTER_TYPES = (
 )
 
 LIST_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*list\s*}\s*$')
-
-
-class InputError(Exception):
-    pass
-
-
-def md_parse_front_matter(s):
-    parts = re.split(r'^---\s*$', s, 2, flags=re.MULTILINE)
-    if len(parts) != 3 or parts[0].strip() or '\n' not in parts[1]:
-        raise InputError('expected yaml front matter not found')
-
-    front = safe_load(parts[1])
-    body = parts[2]
-
-    return front, body
-
-
-def md_parse_body(body, schema):
-    # context manager required for creation of BlankLine, etc.
-    with MarkdownRenderer():
-        return Document(body)
 
 
 @dataclass
@@ -386,16 +364,3 @@ def parse_match(m):
 
 def parse_matches(matches):
     return [parse_match(m) for m in matches]
-
-
-class Schema:
-    @classmethod
-    def read(cls, yaml_str):
-        y = safe_load(yaml_str)
-
-        assert set(y) == {'sections', 'semantic-md-version'}
-        schema = cls()
-        schema.children = parse_matches(y.get('children', []))
-        schema.sections = parse_matches(y.get('sections', []))
-
-        return schema

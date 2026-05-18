@@ -18,6 +18,9 @@ classifiers = [
 license = "MIT"
 license-files = ["LICEN[CS]E*"]
 
+[project.scripts]
+smd = "semantic_md.cli:cli"
+
 [project.urls]
 Homepage = "https://github.com/semantic-md/semantic-md"
 Issues = "https://github.com/semantic-md/semantic-md/issues"
