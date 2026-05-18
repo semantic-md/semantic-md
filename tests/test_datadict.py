@@ -1,4 +1,5 @@
 import os
+import json
 
 from yaml import safe_load
 
@@ -19,4 +20,4 @@ def test1():
     schema = read.Schema.read(s)
 
     out = convert.to_json(parsed, schema)
-    breakpoint()
+    assert out == json.load(open(os.path.join(HERE, 'example.json')))
