@@ -1,5 +1,5 @@
 from mistletoe import Document
-from mistletoe.block_token import BlockToken, Heading
+from mistletoe.block_token import Heading
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 
 from .read import Schema, HeadingMatch, apply_path_vars

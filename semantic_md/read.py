@@ -1,7 +1,7 @@
 import re
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 from jsonpatch import JsonPatch
 from jsonpointer import JsonPointer
@@ -42,7 +42,7 @@ def md_parse_front_matter(s):
 
 def md_parse_body(body, schema):
     # context manager required for creation of BlankLine, etc.
-    with MarkdownRenderer() as renderer:
+    with MarkdownRenderer():
         return Document(body)
 
 
@@ -111,7 +111,7 @@ def match_content_tree(
         ]
         if vars_map[list_var] is None:
             vars_map[list_var] = list_vals
-        elif vars_map[list_var] != listvals:
+        elif vars_map[list_var] != list_vals:
             return 0
         return 1
 
