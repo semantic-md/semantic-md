@@ -220,7 +220,7 @@ def apply_json_patch(
             path_pos = prefix_pos
             steps = JsonPointer('/' + path).get_parts()
             for i, step in enumerate(steps):
-                if steps[-1:] == ['-'] and i == len(steps) - 1:
+                if steps[-1:] == ['-'] and i == len(steps) - 2:
                     path_pos = path_pos.setdefault(step, [])
                     break
                 path_pos = path_pos.setdefault(step, {})
