@@ -26,9 +26,10 @@ def cli():
 @click.argument('destination', default='-')
 @click.option(
     '-d',
-    '--subdirs',
-    is_flag=True,
-    help='allow accessing semantic-md files in subdirs of SOURCE parent (cwd if SOURCE is -)',
+    '--schema-dir',
+    help='allow front matter semantic-md schema files found under DIR (defaults '
+    'to parent of SOURCE)',
+    metavar='DIR',
 )
 @click.option(
     '-s',
@@ -40,9 +41,9 @@ def cli():
     '-x',
     '--http',
     is_flag=True,
-    help='allow accessing semantic-md schema files over HTTP',
+    help='allow front matter semantic-md schema file HTTP URLs',
 )
-def json(source, destination, subdirs, schema, http):
+def json(source, destination, schema_dir, schema, http):
     """Convert SOURCE.md to DESTINATION.json"""
     src = click.open_file(source, 'r', 'utf-8')
     dst = click.open_file(destination, 'w', 'utf-8')
@@ -50,28 +51,39 @@ def json(source, destination, subdirs, schema, http):
     front, body = convert.md_parse_front_matter(src.read())
 
     if not schema:
-        part = front['semantic-md']
-        partpath, partname = os.path.split(part)
+        part = front.get('semantic-md', '')
+        part_path, part_name = os.path.split(part)
+
+        if not part_name:
+            raise click.UsageError(
+                'Schema must be present in front matter or given with -s'
+            )
 
         if httpish(part):
             if not http:
                 raise click.UsageError('Use -x to allow HTTP schema downloads')
-            raise click.Abort('FIXME: not yet implemented')
-
-        if not subdirs:
-            raise click.UsageError('Use -d to allow referencing schemas in subdirs')
+            raise click.UsageError('FIXME: HTTP schemas not yet implemented')
 
         if source == '-':
-            parent = os.getcwd()
-        else:
-            parent = os.path.abspath(os.path.split(source)[0])
+            if not schema_dir:
+                raise click.UsageError(
+                    'Use -d=DIR to allow referencing schemas under DIR'
+                )
+            if not os.path.isabs(part_path):
+                raise click.UsageError(
+                    'Relative schemas in front matter are not supported on stdin'
+                )
+        elif not schema_dir:
+            schema_dir = os.path.split(source)[0]
+            if not os.path.isabs(part_path):
+                part_path = os.path.join(schema_dir, part_path)
 
-            if not os.path.isabs(partpath):
-                partpath = os.path.join(parent, partpath)
-        if not os.path.abspath(partpath).startswith(parent):
-            raise click.UsageError(f'Schema {partpath} is not in a subdir of {parent}')
+        schema_dir = os.path.abspath(schema_dir)
 
-        schema = os.path.join(partpath, partname)
+        if not os.path.abspath(part_path).startswith(schema_dir):
+            raise click.UsageError(f'Schema {part_path} is not in a subdir of {parent}')
+
+        schema = os.path.join(part_path, part_name)
 
     s = convert.Schema.read(click.open_file(schema, 'r', 'utf-8').read())
 
