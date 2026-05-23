@@ -56,8 +56,6 @@ def to_json(doc: Document, schema: Schema):
         for match in schema_stack[-1]:
             if result := match.match_md(doc.children, doc_pos):
                 doc_pos += result.tokens
-                json_doc = match.patch(result, json_doc, ''.join(prefix_stack))
-
                 if isinstance(match, HeadingMatch):
                     heading = match.doc[0]
                     # FIXME: enforce these
@@ -70,6 +68,8 @@ def to_json(doc: Document, schema: Schema):
                         if match.patch_path
                         else ''
                     )
+
+                json_doc = match.patch(result, json_doc, ''.join(prefix_stack))
                 break
         else:
             with MarkdownRenderer() as renderer:
