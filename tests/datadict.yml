@@ -9,8 +9,6 @@ sections:
 - heading_match: |
     # Dataset {id}
   vars: [id]
-  patch_add:
-    datasets/$id: {}
   patch_path: datasets/$id
 
   children:
@@ -26,8 +24,6 @@ sections:
 - heading_match: |
     # Table {id}
   vars: [id]
-  patch_add:
-    tables/$id: {}
   patch_path: tables/$id
 
   children:
