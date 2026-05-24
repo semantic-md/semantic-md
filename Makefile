@@ -1,8 +1,8 @@
 .PHONY: test-interactive
 test-interactive:
 	export PYTHONBREAKPOINT=ipdb.set_trace
-#	pytest tests/test_convert.py::test_convert[recipe] -s --pdb -vv
-	pytest tests -s --pdb -vv
+	pytest tests/test_convert.py::test_convert[recipe] -s --pdb -vv
+#	pytest tests -s --pdb -vv
 
 .PHONY: check
 check:

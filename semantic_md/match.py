@@ -100,6 +100,7 @@ class TableMatch(MatchBase):
     cols: list[str]
     row_patch_add: dict[str:Any] | None
     row_submatch: dict[str : list[FilterMatch | Match]] | None
+    row_patch_path: str | None
 
     @property
     def vars_(self):
@@ -116,6 +117,7 @@ class TableMatch(MatchBase):
         self, result: TableMatchResult, json_doc: dict[str, Any], prefix: str
     ) -> dict[str, Any]:
         return apply_table_json_patch(
+            self.row_patch_path,
             self.row_patch_add,
             self.row_submatch,
             result,
@@ -362,6 +364,7 @@ def apply_json_patch(
 
 
 def apply_table_json_patch(
+    row_patch_path: str | None,
     row_patch_add: dict[str:Any] | None,
     row_submatch: dict[str : list[FilterMatch | Match]] | None,
     result: TableMatchResult,
@@ -376,8 +379,17 @@ def apply_table_json_patch(
             f'{i + 1}': render_markdown(cell.children).strip()
             for i, cell in enumerate(row.children)
         }
+        patch_path = (
+            apply_path_vars(row_patch_path, vars_map) + '/'
+            if row_patch_path
+            else ''
+        )
+        if patch_path.endswith('/-/'):
+            index = append_list_object_path(json_doc, prefix + patch_path)
+            patch_path = patch_path[:-3] + f'/{index}/'
+
         if row_patch_add:
-            json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
+            json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix + patch_path)
 
         for rm, rules in (row_submatch or {}).items():
             assert rm.startswith('$')
@@ -395,7 +407,7 @@ def apply_table_json_patch(
                     src = Document(cell_vars_map.pop('content')).children[0].children
 
                 cell_result = dataclasses.replace(result, vars_map=cell_vars_map)
-                json_doc = match.patch(cell_result, json_doc, prefix)
+                json_doc = match.patch(cell_result, json_doc, prefix + patch_path)
 
                 if not isinstance(match, FilterMatch):
                     break
@@ -422,7 +434,7 @@ def parse_match(m):
         row_submatch = {
             k: parse_submatches(v) for (k, v) in m.get('row_submatch', {}).items()
         }
-        return TableMatch(cols, m.get('row_patch_add'), row_submatch)
+        return TableMatch(cols, m.get('row_patch_add'), row_submatch, m.get('row_patch_path'))
 
     raise UnknownMatch(m)
 
