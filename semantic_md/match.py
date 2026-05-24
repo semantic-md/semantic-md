@@ -80,6 +80,19 @@ class FilterMatch(MatchBase):
     doc: list[BlockToken]
     patch_add: dict[str:Any]
     vars_: list[str]
+    single_doc: list[BlockToken] | None = None
+
+    def match_md(
+        self,
+        tokens: list[BlockToken],
+        pos: int,
+    ) -> MatchResult | None:
+        mat = None
+        if self.single_doc:
+            mat = match_block_tokens(self.single_doc, tokens, pos, self.vars_)
+        if not mat or mat.vars_map['content'] != '1':
+            mat = match_block_tokens(self.doc, tokens, pos, self.vars_)
+        return mat
 
 
 @dataclass
@@ -131,12 +144,10 @@ class UnknownSubmatch(Exception):
 
 def is_md_filter_var(match_token):
     """{var|md}"""
-    if (
-        isinstance(match_token, Paragraph)
-        and len(match_token.children) == 1
-        and (md_var := MD_FILTER_VAR.match(match_token.children[0].content))
-    ):
-        return md_var.group(1)
+    match match_token:
+        case Paragraph(children=[RawText(content=text)]):
+            if mat := MD_FILTER_VAR.match(text):
+                return mat.group(1)
 
 
 def is_list_filter_var(match_token):
@@ -328,11 +339,11 @@ def apply_table_json_patch(
     # FIXME: submatching when we should be just patching :-(
 
     for row in result.table_data:
+        vars_map = {
+            f'{i + 1}': render_markdown(cell.children).strip()
+            for i, cell in enumerate(row.children)
+        }
         if row_patch_add:
-            vars_map = {
-                f'{i + 1}': render_markdown(cell.children).strip()
-                for i, cell in enumerate(row.children)
-            }
             json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix)
 
         for rm, rules in (row_submatch or {}).items():
@@ -388,17 +399,28 @@ def parse_matches(matches):
 
 
 def parse_submatch(m):
-    if flt := m.get('filter_match'):
-        doc = Document(flt).children[0].children
-        vars_ = extract_vars(doc)
-        assert 'content' in vars_
-        return FilterMatch(doc, m.get('patch_add'), vars_)
+    match m:
+        case {'filter_match': {'singular': str(sflt), 'plural': str(flt)}}:
+            sdoc = Document(sflt).children[0].children
+            svars_ = extract_vars(sdoc)
+            doc = Document(flt).children[0].children
+            vars_ = extract_vars(doc)
+            assert 'content' in vars_
+            assert set(svars_) == set(vars_)
+            return FilterMatch(doc, m.get('patch_add'), vars_, sdoc)
 
-    elif md := m.get('match'):
-        doc = Document(md).children[0].children
-        return Match(doc, m.get('patch_add'), extract_vars(doc))
+        case {'filter_match': str(flt)}:
+            doc = Document(flt).children[0].children
+            vars_ = extract_vars(doc)
+            assert 'content' in vars_
+            return FilterMatch(doc, m.get('patch_add'), vars_)
 
-    raise UnknownSubmatch(m)
+        case {'match': str(md)}:
+            doc = Document(md).children[0].children
+            return Match(doc, m.get('patch_add'), extract_vars(doc))
+
+        case _:
+            raise UnknownSubmatch(m)
 
 
 def parse_submatches(matches):

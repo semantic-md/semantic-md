@@ -1,5 +1,5 @@
 ---
-semantic-md: recipes.yaml
+semantic-md: recipe.yaml
 ---
 
 # Mole House Cookie Recipe

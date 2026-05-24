@@ -1,5 +1,5 @@
 ---
-semantic-md: datadict.yml
+semantic-md: datadict.yaml
 ---
 
 # Dataset 311 NYC Data

@@ -14,7 +14,6 @@ class Schema:
     def read(cls, yaml_str):
         y = safe_load(yaml_str)
 
-        assert set(y) == {'sections', 'semantic-md-version'}
         schema = cls()
         schema.children = parse_matches(y.get('children', []))
         schema.sections = parse_matches(y.get('sections', []))

@@ -7,13 +7,13 @@ sections:
 
   children:
   - match: |
-    ![{image_alt}]({image_url})
+      ![{image_alt}]({image_url})
     patch_add:
       image_url: $image_url
       image_alt: $image_alt
 
   - match: |
-    {background_story|md}
+      {background_story|md}
     patch_add:
       background_story: $background_story
 
@@ -22,7 +22,7 @@ sections:
     row_submatch:
       $1:
         - filter_match:
-            singluar: "{content} cup"
+            singular: "{content} cup"
             plural: "{content} cups"
           patch_add:
             measure: cup

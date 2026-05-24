@@ -81,7 +81,9 @@ def json(source, destination, schema_dir, schema, http):
         schema_dir = os.path.abspath(schema_dir)
 
         if not os.path.abspath(part_path).startswith(schema_dir):
-            raise click.UsageError(f'Schema {part_path} is not in a subdir of {schema_dir}')
+            raise click.UsageError(
+                f'Schema {part_path} is not in a subdir of {schema_dir}'
+            )
 
         schema = os.path.join(part_path, part_name)
 
