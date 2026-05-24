@@ -20,7 +20,7 @@ from mistletoe.block_token import (
     HtmlBlock,
 )
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
-from mistletoe.span_token import RawText
+from mistletoe.span_token import RawText, Image
 from mistletoe.token import Token
 
 from .text import match_content, NoMatch, extract_content_vars
@@ -221,14 +221,20 @@ def match_content_tree(
         if pos < len(toks):
             return 0
 
-    if isinstance(match_token, RawText) and hasattr(match_token, 'content'):
-        try:
-            new_vars = match_content(
-                vars_map, match_token.content, tokens[token_pos].content
-            )
-        except NoMatch:
-            return 0
-        vars_map.update(new_vars)
+    doc_text = None
+    match match_token:
+        case RawText(content=text):
+            doc_text = tokens[token_pos].content
+        case Image(src=text):
+            doc_text = tokens[token_pos].src
+        case _:
+            return 1
+
+    try:
+        new_vars = match_content(vars_map, text, doc_text)
+    except NoMatch:
+        return 0
+    vars_map.update(new_vars)
     return 1
 
 
@@ -295,6 +301,9 @@ def apply_path_vars(path: str, vars_map: dict[str, str]):
 
 
 def walk_create_object(pos: dict[str, Any] | list[Any], step: str):
+    """
+    jsonpointer walk, but create missing objects along the way
+    """
     if isinstance(pos, list):
         return pos[int(step)]
     return pos.setdefault(step, {})
@@ -456,6 +465,9 @@ def extract_vars(doc: list[Token]):
     for tok in doc:
         if tok.children:
             vars_.extend(extract_vars(tok.children))
-        if isinstance(tok, RawText):
-            vars_.extend(extract_content_vars(tok.content))
+        match tok:
+            case RawText(content=text):
+                vars_.extend(extract_content_vars(text))
+            case Image(src=text):
+                vars_.extend(extract_content_vars(text))
     return vars_
