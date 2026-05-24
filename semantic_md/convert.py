@@ -5,7 +5,7 @@ from mistletoe import Document
 from mistletoe.block_token import Heading
 from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 
-from .match import HeadingMatch, apply_path_vars, parse_matches
+from .match import HeadingMatch, apply_path_vars, parse_matches, append_list_object_path
 from .text import NoMatch
 
 
@@ -62,11 +62,15 @@ def to_json(doc: Document, schema: Schema):
                     assert heading_level + 1 == heading.level
                     heading_level = heading.level
                     schema_stack.append(MatchFrame(match))
-                    prefix_stack.append(
+                    patch_path = (
                         apply_path_vars(match.patch_path, result.vars_map) + '/'
                         if match.patch_path
                         else ''
                     )
+                    if patch_path.endswith('/-/'):
+                        index = append_list_object_path(json_doc, ''.join(prefix_stack + [patch_path]))
+                        patch_path = patch_path[:-3] + f'/{index}/'
+                    prefix_stack.append(patch_path)
 
                 json_doc = match.patch(result, json_doc, ''.join(prefix_stack))
                 break

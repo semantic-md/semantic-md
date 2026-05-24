@@ -133,6 +133,12 @@ class HeadingMatch(MatchBase):
     children: list[MatchBase] | None = None
     sections: list[MatchBase] | None = None
 
+    def patch(
+        self, result: MatchResult, json_doc: dict[str, Any], prefix: str
+    ) -> dict[str, Any]:
+        if self.patch_add:
+            return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
+        return json_doc
 
 class UnknownMatch(Exception):
     pass
@@ -152,16 +158,11 @@ def is_md_filter_var(match_token):
 
 def is_list_filter_var(match_token):
     """- {var|list}"""
-    if (
-        isinstance(match_token, List)
-        and len(match_token.children) == 1
-        and isinstance(li := match_token.children[0], ListItem)
-        and len(li.children) == 1
-        and isinstance(p := li.children[0], Paragraph)
-        and len(p.children) == 1
-        and (list_var := LIST_FILTER_VAR.match(p.children[0].content))
-    ):
-        return list_var.group(1)
+    match match_token:
+        case List(
+            children=[ListItem(children=[Paragraph(children=[RawText(content=text)])])]
+        ) if list_var := LIST_FILTER_VAR.match(text):
+            return list_var.group(1)
 
 
 def render_markdown(tokens: list[Token]):
@@ -293,6 +294,28 @@ def apply_path_vars(path: str, vars_map: dict[str, str]):
     return path
 
 
+def walk_create_object(pos: dict[str, Any] | list[Any], step: str):
+    if isinstance(pos, list):
+        return pos[int(step)]
+    return pos.setdefault(step, {})
+
+
+def append_list_object_path(json_doc: dict[str, Any], path: str) -> int:
+    """
+    create missing path object(s) and trailing list in-place in json_doc,
+    return index of empty object appended to list.
+    """
+    assert path.endswith('/-/')
+    pos = json_doc
+    steps = JsonPointer(path).get_parts()
+    for step in steps[:-3]:
+        pos = walk_create_object(pos, step)
+    pos = pos.setdefault(steps[-3], [])
+    index = len(pos)
+    pos.append({})
+    return index
+
+
 def apply_json_patch(
     patch_add: dict[str:Any],
     vars_map: dict[str, str],
@@ -310,7 +333,8 @@ def apply_json_patch(
     # create missing objects in paths
     prefix_pos = json_doc
     for step in JsonPointer(prefix).get_parts()[:-1]:
-        prefix_pos = prefix_pos.setdefault(step, {})
+        prefix_pos = walk_create_object(prefix_pos, step)
+
     for path, json_value in filled_patch.items():
         if path:
             path_pos = prefix_pos
@@ -319,7 +343,7 @@ def apply_json_patch(
                 if steps[-1:] == ['-'] and i == len(steps) - 2:
                     path_pos = path_pos.setdefault(step, [])
                     break
-                path_pos = path_pos.setdefault(step, {})
+                path_pos = walk_create_object(path_pos, step)
 
     operations = [
         {'op': 'add', 'path': prefix + path, 'value': json_value}
