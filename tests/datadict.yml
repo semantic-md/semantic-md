@@ -8,13 +8,11 @@ semantic-md-version: 0
 sections:
 - heading_match: |
     # Dataset {id}
-  vars: [id]
   patch_path: datasets/$id
 
   children:
   - match: |
       {desc | md}
-    vars: [desc]
     patch_add:
       description: $desc
   - table_match: [Resource, Table, Title]
@@ -23,7 +21,6 @@ sections:
 
 - heading_match: |
     # Table {id}
-  vars: [id]
   patch_path: tables/$id
 
   children:
@@ -36,7 +33,6 @@ sections:
           patch_add:
             columns/$1/required: true
         - match: "{typename}"
-          vars: [typename]
           patch_add:
             columns/$1/type: $typename
 
@@ -47,39 +43,33 @@ sections:
   sections:
   - heading_match: |
       ## Column {id}
-    vars: [id]
     patch_path: columns/$id
 
     children:
     - match: |
         {desc | md}
-      vars: [desc]
       patch_add:
         description: $desc
     - match: |
         ### Validation
 
         Values >= {min}
-      vars: [min]
       patch_add:
         validation: {"gte": $min}
     - match: |
         ### Choices
 
         - {vals | list}
-      vars: [vals]
       patch_add:
         choices: $vals
 
 - heading_match: |
     # Resource {id}
-  vars: [id]
   patch_path: resources/$id
 
   children:
   - match: |
       {desc | md}
-    vars: [desc]
     patch_add:
       description: $desc
 
@@ -94,7 +84,6 @@ sections:
         }
     - heading_match: |
         ### Frequency for {col}
-      vars: [col]
       patch_path: columns/$col
 
       children:

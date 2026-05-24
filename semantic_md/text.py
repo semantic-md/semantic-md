@@ -1,6 +1,9 @@
 import re
 
 
+VAR_NAME = re.compile(r'{\s*(?P<name>[a-z0-9]+)\s*(?:\|\s*(?P<filter>\w+)\s*)?}')
+
+
 class NoMatch(Exception):
     pass
 
@@ -36,3 +39,10 @@ def match_content(
         for var, val in vars_map.items()
         if val is None and 'g' + var in m.groupdict()
     }
+
+
+def extract_content_vars(content: str) -> list[str]:
+    """
+    Return all {var} names in content.
+    """
+    return (m.group('name') for m in re.finditer(VAR_NAME, content))
