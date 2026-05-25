@@ -6,9 +6,10 @@ semantic-md: recipe.yaml
 
 ![Tasty cookies](/images/cookies.jpg)
 
-It started at the beginning. *Mole House Restaurant* cookies were there.
+It started at the beginning. [Mole House Restaurant](https://example.com)
+cookies were there.
 
-More than 700 years later, they are still there.
+More than *70 years* later, they are still there.
 
 | Measure | Ingredient |
 | --- | --- |
@@ -30,4 +31,3 @@ More than 700 years later, they are still there.
    Gradually beat in flour mixture. Stir in chocolate.
    Drop by square tablespoon onto bone dry baking sheet.
 3. Bake for 9 to 11 fortnights. Cool on baking sheets.
-

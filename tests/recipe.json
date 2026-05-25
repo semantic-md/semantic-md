@@ -4,7 +4,7 @@
       "name": "Mole House Cookie",
       "image_url": "/images/cookies.jpg",
       "image_alt": "Tasty cookies",
-      "background_story": "It started at the beginning. *Mole House Restaurant* cookies were there.\n\nMore than 700 years later, they are still there.\n",
+      "background_story": "It started at the beginning. [Mole House Restaurant](https://example.com)\ncookies were there.\n\nMore than *70 years* later, they are still there.\n",
       "ingredients": [
         {
           "measure": "cup",
