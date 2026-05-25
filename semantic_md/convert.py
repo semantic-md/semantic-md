@@ -68,7 +68,9 @@ def to_json(doc: Document, schema: Schema):
                         else ''
                     )
                     if patch_path.endswith('/-/'):
-                        index = append_list_object_path(json_doc, ''.join(prefix_stack + [patch_path]))
+                        index = append_list_object_path(
+                            json_doc, ''.join(prefix_stack + [patch_path])
+                        )
                         patch_path = patch_path[:-3] + f'/{index}/'
                     prefix_stack.append(patch_path)
 

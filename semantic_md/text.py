@@ -59,7 +59,7 @@ def mixed_fraction(text):
 filter_fns = {'mixed_fraction': mixed_fraction}
 
 
-def extract_content_var_filters(content: str) -> dict[str:str|None]:
+def extract_content_var_filters(content: str) -> dict[str : str | None]:
     """
     Return all {var} and {var|filters} in content.
     """

@@ -42,6 +42,7 @@ LIST_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*list\s*}\s*$')
 
 MIXED_FRACTION_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*mixed_fraction\s*}\s*$')
 
+
 @dataclass
 class MatchResult:
     tokens: int
@@ -73,14 +74,14 @@ class MatchBase:
 class Match(MatchBase):
     doc: list[BlockToken]
     patch_add: dict[str:Any]
-    var_filters: dict[str:str|None]
+    var_filters: dict[str : str | None]
 
 
 @dataclass
 class FilterMatch(MatchBase):
     doc: list[BlockToken]
     patch_add: dict[str:Any]
-    var_filters: dict[str:str|None]
+    var_filters: dict[str : str | None]
     single_doc: list[BlockToken] | None = None
 
     def match_md(
@@ -132,7 +133,7 @@ class HeadingMatch(MatchBase):
     doc: list[BlockToken]
     patch_path: str | None
     patch_add: dict[str:Any] | None
-    var_filters: dict[str:str|None]
+    var_filters: dict[str : str | None]
     children: list[MatchBase] | None = None
     sections: list[MatchBase] | None = None
 
@@ -142,6 +143,7 @@ class HeadingMatch(MatchBase):
         if self.patch_add:
             return apply_json_patch(self.patch_add, result.vars_map, json_doc, prefix)
         return json_doc
+
 
 class UnknownMatch(Exception):
     pass
@@ -244,7 +246,7 @@ def match_block_tokens(
     match_tokens: list[BlockToken],
     tokens: list[BlockToken],
     token_pos: int,
-    var_filters: dict[str:str|None],
+    var_filters: dict[str : str | None],
 ) -> MatchResult | None:
 
     vars_map = dict.fromkeys(var_filters)
@@ -380,16 +382,16 @@ def apply_table_json_patch(
             for i, cell in enumerate(row.children)
         }
         patch_path = (
-            apply_path_vars(row_patch_path, vars_map) + '/'
-            if row_patch_path
-            else ''
+            apply_path_vars(row_patch_path, vars_map) + '/' if row_patch_path else ''
         )
         if patch_path.endswith('/-/'):
             index = append_list_object_path(json_doc, prefix + patch_path)
             patch_path = patch_path[:-3] + f'/{index}/'
 
         if row_patch_add:
-            json_doc = apply_json_patch(row_patch_add, vars_map, json_doc, prefix + patch_path)
+            json_doc = apply_json_patch(
+                row_patch_add, vars_map, json_doc, prefix + patch_path
+            )
 
         for rm, rules in (row_submatch or {}).items():
             assert rm.startswith('$')
@@ -434,7 +436,9 @@ def parse_match(m):
         row_submatch = {
             k: parse_submatches(v) for (k, v) in m.get('row_submatch', {}).items()
         }
-        return TableMatch(cols, m.get('row_patch_add'), row_submatch, m.get('row_patch_path'))
+        return TableMatch(
+            cols, m.get('row_patch_add'), row_submatch, m.get('row_patch_path')
+        )
 
     raise UnknownMatch(m)
 
@@ -472,7 +476,7 @@ def parse_submatches(matches):
     return [parse_submatch(m) for m in matches]
 
 
-def extract_var_filters(doc: list[Token]) -> dict[str:str|None]:
+def extract_var_filters(doc: list[Token]) -> dict[str : str | None]:
     var_filters = {}
     for tok in doc:
         if tok.children:
