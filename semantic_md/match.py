@@ -23,7 +23,7 @@ from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
 from mistletoe.span_token import RawText, Image
 from mistletoe.token import Token
 
-from .text import match_content, NoMatch, extract_content_vars
+from .text import match_content, NoMatch, extract_content_var_filters
 
 MISTUNE_PLUGINS = ['table', 'def_list']
 
@@ -40,6 +40,7 @@ MD_FILTER_TYPES = (
 
 LIST_FILTER_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*list\s*}\s*$')
 
+MIXED_FRACTION_VAR = re.compile(r'^\s*{\s*(\w+[\d\w]*)\s*\|\s*mixed_fraction\s*}\s*$')
 
 @dataclass
 class MatchResult:
@@ -58,7 +59,7 @@ class MatchBase:
         tokens: list[BlockToken],
         pos: int,
     ) -> MatchResult | None:
-        return match_block_tokens(self.doc, tokens, pos, self.vars_)
+        return match_block_tokens(self.doc, tokens, pos, self.var_filters)
 
     def patch(
         self, result: MatchResult, json_doc: dict[str, Any], prefix: str
@@ -72,14 +73,14 @@ class MatchBase:
 class Match(MatchBase):
     doc: list[BlockToken]
     patch_add: dict[str:Any]
-    vars_: list[str]
+    var_filters: dict[str:str|None]
 
 
 @dataclass
 class FilterMatch(MatchBase):
     doc: list[BlockToken]
     patch_add: dict[str:Any]
-    vars_: list[str]
+    var_filters: dict[str:str|None]
     single_doc: list[BlockToken] | None = None
 
     def match_md(
@@ -89,9 +90,9 @@ class FilterMatch(MatchBase):
     ) -> MatchResult | None:
         mat = None
         if self.single_doc:
-            mat = match_block_tokens(self.single_doc, tokens, pos, self.vars_)
+            mat = match_block_tokens(self.single_doc, tokens, pos, self.var_filters)
         if not mat or mat.vars_map['content'] != '1':
-            mat = match_block_tokens(self.doc, tokens, pos, self.vars_)
+            mat = match_block_tokens(self.doc, tokens, pos, self.var_filters)
         return mat
 
 
@@ -103,8 +104,8 @@ class TableMatch(MatchBase):
     row_patch_path: str | None
 
     @property
-    def vars_(self):
-        return [f'${n + 1}' for n in range(len(self.cols))]
+    def var_filters(self):
+        return dict.fromkeys(f'${n + 1}' for n in range(len(self.cols)))
 
     def match_md(
         self,
@@ -131,7 +132,7 @@ class HeadingMatch(MatchBase):
     doc: list[BlockToken]
     patch_path: str | None
     patch_add: dict[str:Any] | None
-    vars_: list[str] | None
+    var_filters: dict[str:str|None]
     children: list[MatchBase] | None = None
     sections: list[MatchBase] | None = None
 
@@ -231,7 +232,6 @@ def match_content_tree(
             doc_text = tokens[token_pos].src
         case _:
             return 1
-
     try:
         new_vars = match_content(vars_map, text, doc_text)
     except NoMatch:
@@ -244,10 +244,10 @@ def match_block_tokens(
     match_tokens: list[BlockToken],
     tokens: list[BlockToken],
     token_pos: int,
-    vars_: list[str],
+    var_filters: dict[str:str|None],
 ) -> MatchResult | None:
 
-    vars_map = {var: None for var in vars_ or []}
+    vars_map = dict.fromkeys(var_filters)
     i = 0
     for match_token in match_tokens:
         if token_pos + i >= len(tokens):
@@ -418,7 +418,7 @@ def parse_match(m):
     if md := m.get('heading_match'):
         doc = Document(md).children
         match = HeadingMatch(
-            doc, m.get('patch_path'), m.get('patch_add'), extract_vars(doc)
+            doc, m.get('patch_path'), m.get('patch_add'), extract_var_filters(doc)
         )
         if children := m.get('children'):
             match.children = parse_matches(children)
@@ -428,7 +428,7 @@ def parse_match(m):
 
     if md := m.get('match'):
         doc = Document(md).children
-        return Match(doc, m.get('patch_add'), extract_vars(doc))
+        return Match(doc, m.get('patch_add'), extract_var_filters(doc))
 
     if cols := m.get('table_match'):
         row_submatch = {
@@ -447,22 +447,22 @@ def parse_submatch(m):
     match m:
         case {'filter_match': {'singular': str(sflt), 'plural': str(flt)}}:
             sdoc = Document(sflt).children[0].children
-            svars_ = extract_vars(sdoc)
+            svar_filters = extract_var_filters(sdoc)
             doc = Document(flt).children[0].children
-            vars_ = extract_vars(doc)
-            assert 'content' in vars_
-            assert set(svars_) == set(vars_)
-            return FilterMatch(doc, m.get('patch_add'), vars_, sdoc)
+            var_filters = extract_var_filters(doc)
+            assert 'content' in var_filters
+            assert svar_filters == var_filters
+            return FilterMatch(doc, m.get('patch_add'), var_filters, sdoc)
 
         case {'filter_match': str(flt)}:
             doc = Document(flt).children[0].children
-            vars_ = extract_vars(doc)
-            assert 'content' in vars_
-            return FilterMatch(doc, m.get('patch_add'), vars_)
+            var_filters = extract_var_filters(doc)
+            assert 'content' in var_filters
+            return FilterMatch(doc, m.get('patch_add'), var_filters)
 
         case {'match': str(md)}:
             doc = Document(md).children[0].children
-            return Match(doc, m.get('patch_add'), extract_vars(doc))
+            return Match(doc, m.get('patch_add'), extract_var_filters(doc))
 
         case _:
             raise UnknownSubmatch(m)
@@ -472,14 +472,14 @@ def parse_submatches(matches):
     return [parse_submatch(m) for m in matches]
 
 
-def extract_vars(doc: list[Token]):
-    vars_ = []
+def extract_var_filters(doc: list[Token]) -> dict[str:str|None]:
+    var_filters = {}
     for tok in doc:
         if tok.children:
-            vars_.extend(extract_vars(tok.children))
+            var_filters.update(extract_var_filters(tok.children))
         match tok:
             case RawText(content=text):
-                vars_.extend(extract_content_vars(text))
+                var_filters.update(extract_content_var_filters(text))
             case Image(src=text):
-                vars_.extend(extract_content_vars(text))
-    return vars_
+                var_filters.update(extract_content_var_filters(text))
+    return var_filters
