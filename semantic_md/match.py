@@ -201,9 +201,8 @@ def match_content_tree(
         return i - token_pos
 
     if list_var := is_list_filter_var(match_token):
-        # FIXME: handle non-single-paragraph lists
         list_vals = [
-            c.children[0].children[0].content for c in tokens[token_pos].children
+            render_markdown(c.children).strip() for c in tokens[token_pos].children
         ]
         if vars_map[list_var] is None:
             vars_map[list_var] = list_vals
