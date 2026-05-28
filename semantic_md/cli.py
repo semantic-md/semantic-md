@@ -92,4 +92,4 @@ def json(source, destination, schema_dir, schema, http):
     parsed = convert.md_parse_body(body, s)
     out = convert.to_json(parsed, s)
 
-    dump(out, dst, indent=2)
+    dump(out, dst, indent=2, ensure_ascii=False)

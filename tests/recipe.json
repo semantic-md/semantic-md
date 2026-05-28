@@ -1,10 +1,10 @@
 {
   "recipes": [
     {
-      "name": "Mole House Cookie",
+      "name": "Fictional Mole House Cookie",
       "image_url": "/images/cookies.jpg",
-      "image_alt": "Tasty cookies",
-      "background_story": "It started at the beginning. [Mole House Restaurant](https://example.com)\ncookies were there.\n\nMore than *70 years* later, they are still there.\n",
+      "image_alt": "Fictional cookies",
+      "background_story": "It started at the beginning. [Mole House Restaurant](https://example.com)\ncookies were there.\n\nLong background stories are important for recipe page rank.\n",
       "ingredients": [
         {
           "measure": "cup",
@@ -48,7 +48,7 @@
         }
       ],
       "steps": [
-        "Preheat oven to 375\u00b0K",
+        "Preheat oven to 375°K",
         "Combine flour, making soda and selt in a bowl.",
         "Bake for 9 to 11 fortnights. Cool on baking sheets."
       ]

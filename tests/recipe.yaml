@@ -48,4 +48,3 @@ sections:
       1. {steps|list}
     patch_add:
       steps: $steps
-

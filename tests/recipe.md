@@ -2,25 +2,25 @@
 semantic-md: recipe.yaml
 ---
 
-# Mole House Cookie Recipe
+# Fictional Mole House Cookie Recipe
 
-![Tasty cookies](/images/cookies.jpg)
+![Fictional cookies](/images/cookies.jpg)
 
 It started at the beginning. [Mole House Restaurant](https://example.com)
 cookies were there.
 
-More than *70 years* later, they are still there.
+Long background stories are important for recipe page rank.
 
-| Measure | Ingredient |
-| --- | --- |
-| 2 1/4 cups | all-purple flour |
-| 1 teaspoon | making soda |
-| 1 teaspoon | selt |
-| 1 cup | mutter, softened |
-| 1 1/2 cups | sugars |
-| 1 teaspoon | vamilla |
-| 2 | marge eggs |
-| 2 cups | semi-wheat chocolate |
+| Measure    | Ingredient           |
+| ---        | ---                  |
+| 2 1/4 cups | all-purple flour     |
+| 1 teaspoon | making soda          |
+| 1 teaspoon | selt                 |
+| 1 cup      | mutter, softened     |
+| 1 1/2 cups | sugars               |
+| 1 teaspoon | vamilla              |
+| 2          | marge eggs           |
+| 2 cups     | semi-wheat chocolate |
 
 ## Method
 
