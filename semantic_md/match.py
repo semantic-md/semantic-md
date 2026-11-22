@@ -188,8 +188,10 @@ def match_content_tree(
     """
     if md_var := is_md_filter_var(match_token):
         nonblank = token_pos
+        end = len(tokens)
         for i in range(token_pos, len(tokens)):
             if not isinstance(tokens[i], MD_FILTER_TYPES):
+                end = i
                 break
             if not isinstance(tokens[i], BlankLine):
                 nonblank = i
@@ -198,7 +200,7 @@ def match_content_tree(
             vars_map[md_var] = md
         elif vars_map[md_var] != md:
             return 0
-        return i - token_pos
+        return end - token_pos
 
     if list_var := is_list_filter_var(match_token):
         list_vals = [
