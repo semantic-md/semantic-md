@@ -30,6 +30,11 @@ smd md input.json output.md --schema schema.yaml
 The generated Markdown includes front matter pointing to the schema, so it can
 be converted back with `smd json output.md output.json`.
 
+The converter escapes plain text inserted into Markdown patterns. Values captured
+with `|md` or `|list`, and values captured directly from table cells, are treated
+as Markdown rather than plain text. Not all JSON values or schemas can be rendered;
+if no candidate passes the conversion-back check, `smd md` reports an error.
+
 The output is a valid Markdown representation, not necessarily the original
 document. A schema may discard formatting or other source details, and inverse
 rendering may choose a canonical form (for example, a particular fraction or

@@ -4,9 +4,8 @@ from collections.abc import Mapping
 from math import gcd
 
 from . import convert
-from .text import NoMatch
+from .text import VAR_NAME, NoMatch
 
-VARIABLE = re.compile(r'\{([a-z0-9_]+)(?:\s*\|\s*(\w+))?\}')
 PATH_VARIABLE = re.compile(r'^\$([a-z0-9_]+)$')
 VALUE_VARIABLE = re.compile(r'^\$([a-z0-9_]+)$')
 
@@ -132,37 +131,63 @@ def _value_text(value, filt=None):
     return str(value)
 
 
-def _render_template(template, variables):
+def _escape_text(value, destination=False, block_start=False):
+    if '\n' in value or '\r' in value:
+        raise CannotRender('inline values cannot contain line breaks')
+    special = r'\`*_{}[]<>&#!()'
+    if destination:
+        special += ' \t'
+    if block_start:
+        special += '-+~.='
+    return ''.join(f'&#{ord(char)};' if char in special else char for char in value)
+
+
+def _render_template(template, variables, raw_variables=()):
     def replace(match):
-        name, filt = match.groups()
+        name, filt = match.group('name', 'filter')
         if name not in variables:
             raise CannotRender(f'no JSON value supplies variable {name!r}')
         value = variables[name]
-        if filt == 'list':
-            if not isinstance(value, list):
-                raise CannotRender(f'variable {name!r} must be a JSON array')
-            if not value:
-                raise CannotRender(
-                    f'empty list variable {name!r} has no Markdown list representation'
-                )
-            preceding = template[: match.start()]
-            line_start = preceding.rfind('\n') + 1
-            marker = re.search(r'([ \t]*)([-+*]|\d+\.)\s*$', preceding[line_start:])
-            if marker:
-                indent, list_marker = marker.groups()
-                if list_marker.endswith('.'):
-                    return str(value[0]) + ''.join(
-                        f'\n{index}. {item}' for index, item in enumerate(value[1:], 2)
-                    )
-                return str(value[0]) + ''.join(
-                    f'\n{indent}{list_marker} {item}' for item in value[1:]
-                )
-            return '\n'.join(str(item) for item in value)
+        line_start = template.rfind('\n', 0, match.start()) + 1
+        line_end = template.find('\n', match.end())
+        if line_end == -1:
+            line_end = len(template)
+        before = template[line_start : match.start()]
+        after = template[match.end() : line_end]
         if filt == 'md':
-            return str(value)
-        return _value_text(value, filt)
+            if before.strip() or after.strip() or not isinstance(value, str):
+                raise CannotRender(f'variable {name!r} must be a Markdown block')
+            return value.rstrip('\n')
+        if filt == 'list':
+            marker = re.fullmatch(r'(\s*)([-+*]|\d+[.)])\s+', before)
+            if not marker or after.strip() or not isinstance(value, list) or not value:
+                raise CannotRender(f'variable {name!r} must be a nonempty Markdown list')
+            if not all(isinstance(item, str) and item for item in value):
+                raise CannotRender(f'items of {name!r} must be nonempty Markdown text')
+            indent, leader = marker.groups()
+            ordered = leader[0].isdigit()
+            start = int(leader[:-1]) if ordered else 0
+            rendered = []
+            for index, item in enumerate(value):
+                item_leader = f'{start + index}{leader[-1]}' if ordered else leader
+                continuation = ' ' * (len(indent) + len(item_leader) + 1)
+                lines = item.splitlines()
+                rendered.append(
+                    lines[0]
+                    + ''.join(
+                        '\n' + continuation + line if line else '\n' for line in lines[1:]
+                    )
+                )
+                if index:
+                    rendered[-1] = f'{indent}{item_leader} {rendered[-1]}'
+            return '\n'.join(rendered)
+        text = _value_text(value, filt)
+        if name in raw_variables:
+            return text
+        destination = bool(re.search(r'\]\(\s*<?[^)]*$', template[: match.start()]))
+        return _escape_text(text, destination, block_start=not before.strip())
 
-    return VARIABLE.sub(replace, template)
+    return VAR_NAME.sub(replace, template)
 
 
 def _render_filter_options(rule, context, variables, content):
@@ -175,16 +200,12 @@ def _render_filter_options(rule, context, variables, content):
     options = []
     for bound in _bind_patch(rule.get('patch_add'), context, variables):
         for pattern in patterns or []:
-            content_names = [
-                match.group(1)
-                for match in VARIABLE.finditer(pattern)
-                if match.group(1) == 'content'
-            ]
             values = {**bound}
-            if content_names:
-                values['content'] = content
+            values['content'] = content
             try:
-                options.append(_render_template(pattern, values))
+                options.append(
+                    _render_template(pattern, values, raw_variables=('content',))
+                )
             except CannotRender:
                 continue
     return options
@@ -295,14 +316,27 @@ def _render_table(rule, context, variables):
         rendered_rows.append(list(itertools.product(*cell_options)))
 
     for table_rows in itertools.product(*rendered_rows) if rendered_rows else [()]:
-        header = '| ' + ' | '.join(columns) + ' |'
-        separator = '| ' + ' | '.join('---' for _ in columns) + ' |'
-        lines = [header, separator]
-        lines.extend(
-            '| ' + ' | '.join(str(cell).replace('|', r'\|') for cell in row) + ' |'
-            for row in table_rows
+        lines = [
+            _table_line(columns),
+            _table_line(['---'] * len(columns)),
+            *(_table_line(row) for row in table_rows),
+        ]
+        yield '\n'.join(lines)
+
+
+def _table_line(values):
+    def escape_cell(value):
+        text = str(value)
+        if '\n' in text or '\r' in text:
+            raise CannotRender('table cells cannot contain line breaks')
+        # A pipe is a delimiter only when preceded by an even number of backslashes.
+        return re.sub(
+            r'(\\*)\|',
+            lambda m: m.group(0) if len(m.group(1)) % 2 else m.group(1) + r'\|',
+            text,
         )
-        yield '\n'.join(lines) + '\n'
+
+    return '| ' + ' | '.join(escape_cell(value) for value in values) + ' |'
 
 
 def _render_match_options(rule, context, variables):
@@ -329,15 +363,15 @@ def _render_rules(rules, context, variables):
             continue
         if not options:
             continue
-        chunks = [
-            _join_markdown(prefix, option) for prefix in chunks for option in options
-        ]
+        chunks = [_join_blocks(prefix, option) for prefix in chunks for option in options]
     return chunks
 
 
-def _join_markdown(left, right):
+def _join_blocks(left, right):
     if not left:
         return right
+    if not right:
+        return left
     return left.rstrip('\n') + '\n\n' + right.lstrip('\n')
 
 
@@ -364,25 +398,24 @@ def _render_heading_options(rule, context, variables):
                 for sections in section_options:
                     if (
                         (rule.get('children') or rule.get('sections'))
-                        and not body.strip()
-                        and not sections.strip()
+                        and not body
+                        and not sections
                         and not rule.get('patch_add')
                     ):
                         continue
-                    output = heading.rstrip() + '\n'
-                    if body.strip():
-                        output += '\n' + body.strip('\n') + '\n'
-                    if sections.strip():
-                        output += '\n' + sections.strip('\n') + '\n'
+                    output = _join_blocks(_join_blocks(heading, body), sections)
                     choices.append(output)
         if choices:
             groups.append(choices)
     if not groups:
         return []
-    return [
-        '\n\n'.join(output.rstrip() for output in combination) + '\n'
-        for combination in itertools.product(*groups)
-    ]
+    outputs = []
+    for combination in itertools.product(*groups):
+        output = ''
+        for blocks in combination:
+            output = _join_blocks(output, blocks)
+        outputs.append(output)
+    return outputs
 
 
 def to_markdown(json_doc: dict, schema: convert.Schema) -> str:
@@ -392,16 +425,17 @@ def to_markdown(json_doc: dict, schema: convert.Schema) -> str:
         json_doc,
         {},
     )
-    for body in candidates:
-        if not body.strip():
+    for candidate in candidates:
+        if not candidate.strip():
             continue
+        body = candidate.rstrip('\n') + '\n'
         try:
             rendered = convert.md_parse_body(body, schema)
             actual = convert.to_json(rendered, schema)
         except (AssertionError, KeyError, NoMatch, TypeError, ValueError):
             continue
         if actual == json_doc:
-            return body.rstrip() + '\n'
+            return body
     raise CannotRender(
         'the schema could not produce Markdown that converts to the given JSON'
     )
