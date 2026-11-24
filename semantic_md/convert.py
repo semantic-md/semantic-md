@@ -15,6 +15,7 @@ class Schema:
         y = safe_load(yaml_str)
 
         schema = cls()
+        schema.definition = y
         schema.children = parse_matches(y.get('children', []))
         schema.sections = parse_matches(y.get('sections', []))
 
@@ -84,6 +85,12 @@ def to_json(doc: Document, schema: Schema):
                 )
 
     return json_doc
+
+
+def to_markdown(json_doc: dict, schema: Schema) -> str:
+    from .inverse import to_markdown as render_markdown
+
+    return render_markdown(json_doc, schema)
 
 
 class InputError(Exception):

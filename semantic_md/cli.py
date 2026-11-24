@@ -1,5 +1,5 @@
 import os.path
-from json import dump
+from json import dump, dumps, load
 from urllib.parse import urlparse
 
 import click
@@ -93,3 +93,36 @@ def json(source, destination, schema_dir, schema, http):
     out = convert.to_json(parsed, s)
 
     dump(out, dst, indent=2, ensure_ascii=False)
+
+
+@cli.command('md')
+@click.argument('source', default='-')
+@click.argument('destination', default='-')
+@click.option(
+    '-s',
+    '--schema',
+    required=True,
+    help='specify semantic-md schema',
+    metavar='SCHEMA',
+)
+def markdown(source, destination, schema):
+    """Convert SOURCE.json to DESTINATION.md"""
+    with click.open_file(source, 'r', 'utf-8') as src:
+        json_doc = load(src)
+    with click.open_file(schema, 'r', 'utf-8') as schema_file:
+        parsed_schema = convert.Schema.read(schema_file.read())
+
+    try:
+        body = convert.to_markdown(json_doc, parsed_schema)
+    except convert.NoMatch as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    if destination == '-':
+        schema_reference = os.path.abspath(schema)
+    else:
+        schema_reference = os.path.relpath(
+            os.path.abspath(schema), os.path.dirname(os.path.abspath(destination))
+        )
+    with click.open_file(destination, 'w', 'utf-8') as dst:
+        dst.write(f'---\nsemantic-md: {dumps(schema_reference)}\n---\n\n')
+        dst.write(body)
