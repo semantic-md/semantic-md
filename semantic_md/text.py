@@ -1,6 +1,5 @@
 import re
 
-
 VAR_NAME = re.compile(r'{\s*(?P<name>[a-z0-9_]+)\s*(?:\|\s*(?P<filter>\w+)\s*)?}')
 
 

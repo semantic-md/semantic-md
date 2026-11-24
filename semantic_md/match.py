@@ -1,6 +1,6 @@
-import re
-import json
 import dataclasses
+import json
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -8,23 +8,23 @@ from jsonpatch import JsonPatch
 from jsonpointer import JsonPointer
 from mistletoe import Document
 from mistletoe.block_token import (
-    BlockToken,
-    Heading,
-    Table,
-    TableCell,
-    Paragraph,
-    Quote,
     BlockCode,
+    BlockToken,
     CodeFence,
+    Heading,
+    HtmlBlock,
     List,
     ListItem,
-    HtmlBlock,
+    Paragraph,
+    Quote,
+    Table,
+    TableCell,
 )
-from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
-from mistletoe.span_token import RawText, Image
+from mistletoe.markdown_renderer import BlankLine, MarkdownRenderer
+from mistletoe.span_token import Image, RawText
 from mistletoe.token import Token
 
-from .text import match_content, NoMatch, extract_content_var_filters
+from .text import NoMatch, extract_content_var_filters, match_content
 
 MISTUNE_PLUGINS = ['table', 'def_list']
 
@@ -348,7 +348,11 @@ def apply_json_patch(
         jv = json.dumps(json_value)
         path = apply_path_vars(path_template, vars_map)
         for var, val in vars_map.items():
-            jv = re.sub(r'(?<!\\)"\$' + var + '"', lambda m: json.dumps(val), jv)
+            jv = re.sub(
+                r'(?<!\\)"\$' + var + '"',
+                lambda m, val=val: json.dumps(val),
+                jv,
+            )
         filled_patch[path] = (json.loads(jv), path_template.endswith('/-'))
 
     # create missing objects in paths

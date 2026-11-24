@@ -1,6 +1,6 @@
-from urllib.parse import urlparse
 import os.path
 from json import dump
+from urllib.parse import urlparse
 
 import click
 

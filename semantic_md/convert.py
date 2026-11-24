@@ -1,11 +1,11 @@
 import re
-from yaml import safe_load
 
 from mistletoe import Document
 from mistletoe.block_token import Heading
-from mistletoe.markdown_renderer import MarkdownRenderer, BlankLine
+from mistletoe.markdown_renderer import BlankLine, MarkdownRenderer
+from yaml import safe_load
 
-from .match import HeadingMatch, apply_path_vars, parse_matches, append_list_object_path
+from .match import HeadingMatch, append_list_object_path, apply_path_vars, parse_matches
 from .text import NoMatch
 
 
