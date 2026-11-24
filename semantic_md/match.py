@@ -1,7 +1,7 @@
 import re
 import json
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from jsonpatch import JsonPatch
@@ -9,6 +9,7 @@ from jsonpointer import JsonPointer
 from mistletoe import Document
 from mistletoe.block_token import (
     BlockToken,
+    Heading,
     Table,
     TableCell,
     Paragraph,
@@ -134,8 +135,8 @@ class HeadingMatch(MatchBase):
     patch_path: str | None
     patch_add: dict[str:Any] | None
     var_filters: dict[str : str | None]
-    children: list[MatchBase] | None = None
-    sections: list[MatchBase] | None = None
+    children: list[MatchBase] = field(default_factory=list)
+    sections: list[MatchBase] = field(default_factory=list)
 
     def patch(
         self, result: MatchResult, json_doc: dict[str, Any], prefix: str
@@ -187,18 +188,20 @@ def match_content_tree(
     from tokens[token_pos]. On match updates vars_map in-place.
     """
     if md_var := is_md_filter_var(match_token):
-        nonblank = token_pos
-        for i in range(token_pos, len(tokens)):
-            if not isinstance(tokens[i], MD_FILTER_TYPES):
-                break
-            if not isinstance(tokens[i], BlankLine):
-                nonblank = i
-        md = render_markdown(tokens[token_pos : nonblank + 1])
+        end = token_pos
+        nonblank_end = token_pos
+        while end < len(tokens) and isinstance(tokens[end], MD_FILTER_TYPES):
+            end += 1
+            if not isinstance(tokens[end - 1], BlankLine):
+                nonblank_end = end
+        if nonblank_end == token_pos:
+            return 0
+        md = render_markdown(tokens[token_pos:nonblank_end])
         if vars_map[md_var] is None:
             vars_map[md_var] = md
         elif vars_map[md_var] != md:
             return 0
-        return i - token_pos
+        return end - token_pos
 
     if list_var := is_list_filter_var(match_token):
         list_vals = [
@@ -211,6 +214,9 @@ def match_content_tree(
         return 1
 
     if not isinstance(tokens[token_pos], type(match_token)):
+        return 0
+
+    if isinstance(match_token, Heading) and match_token.level != tokens[token_pos].level:
         return 0
 
     if mtoks := match_token.children:
@@ -283,11 +289,11 @@ def match_table_columns(
     if len(table.header.children) != len(cols):
         return
 
-    try:
-        for i, txt in enumerate(cols):
-            match_content_tree(vars_map, TableCell(content=txt), table.header.children, i)
-    except NoMatch:
-        return
+    for i, txt in enumerate(cols):
+        if not match_content_tree(
+            vars_map, TableCell(content=txt), table.header.children, i
+        ):
+            return
 
     if row_submatch:
         # FIXME: check that submatch matches
@@ -297,10 +303,13 @@ def match_table_columns(
 
 
 def apply_path_vars(path: str, vars_map: dict[str, str]):
-    for var, val in vars_map.items():
-        # FIXME: jsonpath escaping for val?
-        path = re.sub(r'\$' + var + r'\b', lambda m: val, path)
-    return path
+    def replace_var(match):
+        name = match.group(1)
+        if name not in vars_map:
+            return match.group(0)
+        return vars_map[name].replace('~', '~0').replace('/', '~1')
+
+    return re.sub(r'\$([a-z0-9_]+)', replace_var, path)
 
 
 def walk_create_object(pos: dict[str, Any] | list[Any], step: str):
@@ -335,31 +344,31 @@ def apply_json_patch(
     prefix: str,
 ) -> dict[str, Any]:
     filled_patch = {}
-    for path, json_value in patch_add.items():
+    for path_template, json_value in patch_add.items():
         jv = json.dumps(json_value)
-        path = apply_path_vars(path, vars_map)
+        path = apply_path_vars(path_template, vars_map)
         for var, val in vars_map.items():
             jv = re.sub(r'(?<!\\)"\$' + var + '"', lambda m: json.dumps(val), jv)
-        filled_patch[path] = json.loads(jv)
+        filled_patch[path] = (json.loads(jv), path_template.endswith('/-'))
 
     # create missing objects in paths
     prefix_pos = json_doc
     for step in JsonPointer(prefix).get_parts()[:-1]:
         prefix_pos = walk_create_object(prefix_pos, step)
 
-    for path, json_value in filled_patch.items():
+    for path, (json_value, append) in filled_patch.items():
         if path:
             path_pos = prefix_pos
             steps = JsonPointer('/' + path).get_parts()
             for i, step in enumerate(steps):
-                if steps[-1:] == ['-'] and i == len(steps) - 2:
+                if append and i == len(steps) - 2:
                     path_pos = path_pos.setdefault(step, [])
                     break
                 path_pos = walk_create_object(path_pos, step)
 
     operations = [
         {'op': 'add', 'path': prefix + path, 'value': json_value}
-        for path, json_value in filled_patch.items()
+        for path, (json_value, _) in filled_patch.items()
     ]
     return JsonPatch(operations).apply(json_doc)
 
@@ -383,7 +392,7 @@ def apply_table_json_patch(
         patch_path = (
             apply_path_vars(row_patch_path, vars_map) + '/' if row_patch_path else ''
         )
-        if patch_path.endswith('/-/'):
+        if row_patch_path and row_patch_path.endswith('/-'):
             index = append_list_object_path(json_doc, prefix + patch_path)
             patch_path = patch_path[:-3] + f'/{index}/'
 

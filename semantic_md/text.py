@@ -27,7 +27,7 @@ def match_content(
         ep = ep.replace(re.escape(m.group(0)), '(?P<g' + m.group('name') + '>.*)', 1)
         var_filters[m.group('name')] = m.group('filter')
 
-    vm = re.match(ep, content)
+    vm = re.fullmatch(ep, content)
     if not vm:
         raise NoMatch()
 
@@ -41,17 +41,20 @@ def mixed_fraction(text):
     """
     proof of concept filter fn
     """
-    match text.split():
-        case [str(p)] if '/' in p:
-            n, d = p.split('/')
-            return int(n) / int(d)
-        case [str(p)]:
-            return int(p)
-        case [str(p1), str(p2)] if '/' not in p1 and '/' in p2:
-            n, d = p2.split('/')
-            return int(p1) + int(n) / int(d)
-        case _:
-            assert 0, f'mixed_fraction failed to parse: {text}'
+    try:
+        match text.split():
+            case [str(p)] if '/' in p:
+                n, d = p.split('/')
+                return int(n) / int(d)
+            case [str(p)]:
+                return int(p)
+            case [str(p1), str(p2)] if '/' not in p1 and '/' in p2:
+                n, d = p2.split('/')
+                return int(p1) + int(n) / int(d)
+            case _:
+                raise NoMatch()
+    except (ValueError, ZeroDivisionError, OverflowError) as exc:
+        raise NoMatch() from exc
 
 
 # FIXME: make possible to extend

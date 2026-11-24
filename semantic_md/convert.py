@@ -67,7 +67,7 @@ def to_json(doc: Document, schema: Schema):
                         if match.patch_path
                         else ''
                     )
-                    if patch_path.endswith('/-/'):
+                    if match.patch_path and match.patch_path.endswith('/-'):
                         index = append_list_object_path(
                             json_doc, ''.join(prefix_stack + [patch_path])
                         )
