@@ -97,9 +97,11 @@ class InputError(Exception):
     pass
 
 
-def md_parse_front_matter(s):
+def md_parse_front_matter(s, allow_missing=False):
     parts = re.split(r'^---\s*$', s, 2, flags=re.MULTILINE)
     if len(parts) != 3 or parts[0].strip() or '\n' not in parts[1]:
+        if allow_missing:
+            return {}, s
         raise InputError('expected yaml front matter not found')
 
     front = safe_load(parts[1])

@@ -48,7 +48,7 @@ def json(source, destination, schema_dir, schema, http):
     src = click.open_file(source, 'r', 'utf-8')
     dst = click.open_file(destination, 'w', 'utf-8')
 
-    front, body = convert.md_parse_front_matter(src.read())
+    front, body = convert.md_parse_front_matter(src.read(), allow_missing=bool(schema))
 
     if not schema:
         part = front.get('semantic-md', '')

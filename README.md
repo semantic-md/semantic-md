@@ -18,6 +18,9 @@ You can instead provide a schema explicitly with `--schema`:
 smd json input.md output.json --schema schema.yaml
 ```
 
+When a schema is provided explicitly, the Markdown input does not need front
+matter.
+
 ## Converting JSON to Markdown
 
 `smd md` uses a schema's match patterns and JSON patches to construct Markdown,

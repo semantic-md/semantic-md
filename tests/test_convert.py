@@ -71,6 +71,27 @@ def test_md_command_output_can_be_converted_back(tmp_path):
     )
 
 
+def test_json_command_accepts_missing_front_matter_with_schema(tmp_path):
+    schema_path = tmp_path / 'schema.yaml'
+    source_path = tmp_path / 'input.md'
+    destination_path = tmp_path / 'output.json'
+    schema_path.write_text(
+        'children:\n- match: "{value}"\n  patch_add: {value: $value}\n',
+        encoding='utf-8',
+    )
+    source_path.write_text('Some content\n', encoding='utf-8')
+
+    result = CliRunner().invoke(
+        cli,
+        ['json', str(source_path), str(destination_path), '-s', str(schema_path)],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(destination_path.read_text(encoding='utf-8')) == {
+        'value': 'Some content'
+    }
+
+
 def test_inverse_renders_markdown_blocks_and_ordered_list():
     schema = convert.Schema.read("""
 children:
