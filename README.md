@@ -1,6 +1,22 @@
 # semantic-md
 
 Semantic Markdown uses YAML schemas to convert Markdown documents to JSON.
+Learn more at [semanticmd.org](https://semanticmd.org).
+
+## Converting Markdown to JSON
+
+`smd json` converts a Markdown document to JSON, using the schema named in the
+document's front matter:
+
+```sh
+smd json input.md output.json
+```
+
+You can instead provide a schema explicitly with `--schema`:
+
+```sh
+smd json input.md output.json --schema schema.yaml
+```
 
 ## Converting JSON to Markdown
 
